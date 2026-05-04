@@ -6,14 +6,14 @@ import SearchBar from './components/SearchBar';
 import TagFilter from './components/TagFilter';
 import './App.css';
 
-// Cambia entre desarrollo y producción
+// Cambia entre desarrollo, producción o variable de entorno `REACT_APP_API_BASE`
 const isDevelopment = process.env.NODE_ENV === 'development';
-const API_BASE = isDevelopment  
-  ? 'http://localhost:3001'  
-  : 'https://memozapia-backend.onrender.com';
+const API_BASE = process.env.REACT_APP_API_BASE || (
+  isDevelopment ? 'http://localhost:3001' : 'https://memozapia-backend.onrender.com'
+);
 
 const API_URL = `${API_BASE}/api/notes`;
-const TAGS_URL = `${API_BASE}/api/tags/all`;
+const TAGS_URL = `${API_BASE}/api/notes/tags/all`;
 
 function App() {
   const [notes, setNotes] = useState([]);

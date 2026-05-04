@@ -3,7 +3,8 @@ const { Telegraf } = require('telegraf');
 const axios = require('axios');
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const API_URL = 'http://localhost:3001/api/notes';
+const API_BASE = process.env.MEMOZAPIA_API_BASE || process.env.API_BASE || 'http://localhost:3002';
+const API_URL = `${API_BASE}/api/notes`;
 
 if (!TELEGRAM_TOKEN) {
     console.error('ERROR: Necesitas configurar TELEGRAM_TOKEN en el archivo .env');
@@ -57,6 +58,7 @@ bot.command('notes', async (ctx) => {
         });
         ctx.reply(msg);
     } catch (error) {
+        console.error('Error /notes:', error?.response?.data || error.message);
         ctx.reply('Error al obtener notas');
     }
 });
@@ -82,6 +84,7 @@ bot.command('search', async (ctx) => {
         });
         ctx.reply(msg);
     } catch (error) {
+        console.error('Error /search:', error?.response?.data || error.message);
         ctx.reply('Error en la busqueda');
     }
 });
@@ -98,6 +101,7 @@ bot.command('tags', async (ctx) => {
         const tagList = tags.map(t => '#' + t.name).join(', ');
         ctx.reply('Tus etiquetas:\n\n' + tagList);
     } catch (error) {
+        console.error('Error /tags:', error?.response?.data || error.message);
         ctx.reply('Error al obtener etiquetas');
     }
 });
@@ -118,6 +122,7 @@ bot.command('reminder', async (ctx) => {
         await axios.post(API_URL, newNote);
         ctx.reply('Recordatorio guardado:\n"' + text + '"');
     } catch (error) {
+        console.error('Error /reminder:', error?.response?.data || error.message);
         ctx.reply('Error al guardar recordatorio');
     }
 });
@@ -138,6 +143,7 @@ bot.command('task', async (ctx) => {
         await axios.post(API_URL, newNote);
         ctx.reply('Tarea guardada:\n"' + text + '"');
     } catch (error) {
+        console.error('Error /task:', error?.response?.data || error.message);
         ctx.reply('Error al guardar tarea');
     }
 });
@@ -155,6 +161,7 @@ bot.on('text', async (ctx) => {
         const preview = ctx.message.text.substring(0, 100);
         ctx.reply('Nota guardada:\n"' + preview + (ctx.message.text.length > 100 ? '...' : '"'));
     } catch (error) {
+        console.error('Error saving note:', error?.response?.data || error.message);
         ctx.reply('Error al guardar nota');
     }
 });

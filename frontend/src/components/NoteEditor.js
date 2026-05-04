@@ -4,7 +4,7 @@ function NoteEditor({ note, tags, onSave, onCancel }) {
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
   const [selectedTags, setSelectedTags] = useState(
-    note.tags ? note.tags.map(t => t.name) : []
+    note.tags ? note.tags.map(t => (typeof t === 'string' ? t : t.name)) : []
   );
   const [newTag, setNewTag] = useState('');
   const [allTags, setAllTags] = useState(tags);
@@ -12,7 +12,7 @@ function NoteEditor({ note, tags, onSave, onCancel }) {
   useEffect(() => {
     setTitle(note.title || '');
     setContent(note.content || '');
-    setSelectedTags(note.tags ? note.tags.map(t => t.name) : []);
+    setSelectedTags(note.tags ? note.tags.map(t => (typeof t === 'string' ? t : t.name)) : []);
   }, [note]);
 
   const handleSave = () => {

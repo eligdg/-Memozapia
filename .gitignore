@@ -13,3 +13,4 @@ backend/memozapia.json
 frontend/build/
 frontend/.env
 telegram-bot/.env
+._*

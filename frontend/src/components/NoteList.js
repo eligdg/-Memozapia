@@ -45,9 +45,13 @@ function NoteList({ notes, selectedNote, onSelectNote, onDeleteNote }) {
             <p className="note-preview">{truncateText(note.content)}</p>
             {note.tags && note.tags.length > 0 && (
               <div className="note-tags">
-                {note.tags.map(tag => (
-                  <span key={tag.id} className="tag-badge">{tag.name}</span>
-                ))}
+                {note.tags.map((tag, idx) => {
+                  const name = typeof tag === 'string' ? tag : tag.name;
+                  const key = (tag && tag.id) ? tag.id : `${name}-${idx}`;
+                  return (
+                    <span key={key} className="tag-badge">{name}</span>
+                  );
+                })}
               </div>
             )}
             <span className="note-date">{formatDate(note.updated_at)}</span>

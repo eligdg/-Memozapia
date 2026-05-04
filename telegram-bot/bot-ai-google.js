@@ -3,14 +3,18 @@ const { Telegraf } = require('telegraf');
 const { google } = require('googleapis');
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios');
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const HUGGINGFACE_TOKEN = process.env.HUGGINGFACE_TOKEN || '';
+const USE_EXTERNAL_AI = (process.env.USE_EXTERNAL_AI || 'false').toLowerCase() === 'true';
 const fs = require('fs');
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const API_URL = 'http://localhost:3001/api/notes';
+const API_BASE = process.env.MEMOZAPIA_API_BASE || process.env.API_BASE || 'http://localhost:3002';
+const API_URL = `${API_BASE}/api/notes`;
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URI = 'http://localhost:3002/oauth2callback';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${API_BASE}/google-callback`;
 
 const TOKENS_FILE = './google-tokens.json';
 const USER_STATES_FILE = './user-states.json';
@@ -118,6 +122,7 @@ bot.command('notes', async (ctx) => {
         });
         ctx.replyWithMarkdown(msg);
     } catch (error) {
+        console.error('Error /notes:', error?.response?.data || error?.message || error);
         ctx.reply('Error al obtener notas');
     }
 });
@@ -143,25 +148,117 @@ bot.command('search', async (ctx) => {
         });
         ctx.replyWithMarkdown(msg);
     } catch (error) {
+        console.error('Error /search:', error?.response?.data || error?.message || error);
         ctx.reply('Error en la búsqueda');
     }
 });
 
-// Comando /tags
-bot.command('tags', async (ctx) => {
-    try {
-        const response = await axios.get(API_URL + '/tags/all');
-        const tags = response.data;
-        if (tags.length === 0) {
-            ctx.reply('No tienes etiquetas');
-            return;
-        }
-        const tagList = tags.map(t => '#' + t.name).join(', ');
-        ctx.replyWithMarkdown('*Tus etiquetas:*\n\n' + tagList);
-    } catch (error) {
-        ctx.reply('Error al obtener etiquetas');
+// Helper: simple extractive summarizer (fallback)
+function localSummarize(text, maxSentences = 6) {
+    if (!text || text.trim().length === 0) return 'No hay contenido para resumir.';
+    // Split into sentences
+    const sentences = text.match(/[^.!?\n]+[.!?\n]?/g) || [text];
+    const freq = {};
+    const words = text.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    words.forEach(w => { if (w.length > 2) freq[w] = (freq[w] || 0) + 1; });
+    const scoreSentence = s => {
+        const ws = s.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, '').split(/\s+/).filter(Boolean);
+        return ws.reduce((sum, w) => sum + (freq[w] || 0), 0) / (ws.length || 1);
+    };
+    const ranked = sentences.map(s => ({ s, score: scoreSentence(s) }));
+    ranked.sort((a, b) => b.score - a.score);
+    const top = ranked.slice(0, Math.min(maxSentences, ranked.length)).map(r => r.s.trim());
+    return top.join(' ');
+}
+
+function localAnswer(text, maxSentences = 3) {
+    if (!text || text.trim().length === 0) return 'No hay contenido para procesar.';
+    const q = text.toLowerCase();
+    const askAboutMemozapia = q.includes('memozapia') || q.includes('¿qué es') || q.includes('que es') || q.includes('what is');
+    if (askAboutMemozapia) {
+        return 'Memozapia es una aplicación web de "segundo cerebro" para guardar y organizar notas personales: permite crear, editar y eliminar notas, usar etiquetas, buscar por texto y filtrar por etiquetas. Está construida con React en el frontend y Node.js/Express en el backend, y persiste datos en un archivo JSON local.';
     }
-});
+    const sentences = text.match(/[^.!?\n]+[.!?\n]?/g) || [text];
+    const freq = {};
+    const words = text.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    words.forEach(w => { if (w.length > 2) freq[w] = (freq[w] || 0) + 1; });
+    const scoreSentence = s => {
+        const ws = s.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, '').split(/\s+/).filter(Boolean);
+        return ws.reduce((sum, w) => sum + (freq[w] || 0), 0) / (ws.length || 1);
+    };
+    const ranked = sentences.map(s => ({ s, score: scoreSentence(s) }));
+    ranked.sort((a, b) => b.score - a.score);
+    const top = ranked.slice(0, Math.min(maxSentences, ranked.length)).map(r => r.s.trim());
+    return 'Respuesta (generada localmente):\n' + top.join(' ');
+}
+
+// Helper: call OpenAI Chat Completions (if API key present)
+async function callOpenAI(prompt) {
+    const url = 'https://api.openai.com/v1/chat/completions';
+    const headers = { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' };
+    const body = {
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 600,
+        temperature: 0.2
+    };
+    const res = await axios.post(url, body, { headers, timeout: 20000 });
+    return res.data.choices?.[0]?.message?.content?.trim();
+}
+
+// Helper: call Hugging Face inference as alternative
+async function callHuggingFace(prompt) {
+    const models = [
+        'google/flan-t5-small',
+        'sshleifer/distilbart-cnn-12-6',
+        'facebook/bart-large-cnn',
+        'gpt2'
+    ];
+    const headers = { Authorization: `Bearer ${HUGGINGFACE_TOKEN}`, 'Content-Type': 'application/json' };
+    for (const m of models) {
+        try {
+            const url = `https://api-inference.huggingface.co/models/${m}`;
+            const res = await axios.post(url, { inputs: prompt }, { headers, timeout: 20000 });
+            if (!res || !res.data) continue;
+            const data = res.data;
+            if (Array.isArray(data) && data[0]) {
+                if (data[0].generated_text) return data[0].generated_text.trim();
+                if (data[0].summary_text) return data[0].summary_text.trim();
+                if (typeof data[0] === 'string') return data[0].trim();
+            }
+            if (data.generated_text) return data.generated_text.trim();
+            if (data.summary_text) return data.summary_text.trim();
+            if (typeof data === 'string') return data.trim();
+        } catch (err) {
+            console.error(`HF model ${m} failed:`, err?.response?.status || err?.message || err);
+        }
+    }
+    return null;
+}
+
+// Unified askAI: tries OpenAI, then Hugging Face, then local summarizer/fallback
+async function askAI(prompt, options = {}) {
+    try {
+        if (!USE_EXTERNAL_AI) {
+            if (options.type === 'summary') return localSummarize(prompt, 6);
+            return localAnswer(prompt, 4);
+        }
+        if (OPENAI_API_KEY) {
+            const r = await callOpenAI(prompt);
+            if (r) return r;
+        }
+        if (HUGGINGFACE_TOKEN) {
+            const r = await callHuggingFace(prompt);
+            if (r) return r;
+        }
+        if (options.type === 'summary') return localSummarize(prompt, 6);
+        return localAnswer(prompt, 4);
+    } catch (error) {
+        console.error('askAI error:', error?.message || error);
+        if (options.type === 'summary') return localSummarize(prompt, 6);
+        return 'Error al procesar la petición de IA.';
+    }
+}
 
 // Comando /ai
 bot.command('ai', async (ctx) => {
@@ -172,10 +269,10 @@ bot.command('ai', async (ctx) => {
     }
     try {
         ctx.reply('🤖 Pensando...');
-        // Simulación de IA (aquí conectarías con OpenAI o Hugging Face)
-        const answer = '🧠 Respuesta simulada: Entiendo tu pregunta sobre "' + question + '". Próximamente tendré acceso a modelos reales de IA.';
-        ctx.replyWithMarkdown('🧠 *Respuesta:*\n\n' + answer);
+        const response = await askAI(question);
+        ctx.replyWithMarkdown('🧠 *Respuesta:*\n\n' + response);
     } catch (error) {
+        console.error('Error /ai:', error?.message || error);
         ctx.reply('Error al procesar con IA');
     }
 });
@@ -189,17 +286,21 @@ bot.command('summary', async (ctx) => {
             ctx.reply('No tienes notas para resumir');
             return;
         }
-        let allContent = notes.map(n => n.content).join(' ');
-        if (allContent.length > 1000) {
-            allContent = allContent.substring(0, 1000) + '...';
-        }
-        ctx.replyWithMarkdown(
-            '📝 *Resumen de tus notas:*\n\n' +
-            'Tienes ' + notes.length + ' notas recientes.\n' +
-            'Temas: ' + [...new Set(notes.flatMap(n => n.tags || []))].join(', ') + '\n\n' +
-            '_La IA generará un resumen detallado próximamente_'
-        );
+            const topics = [...new Set(notes.flatMap(n => n.tags || []))].join(', ');
+            let allContent = notes.map((n, i) => `Nota ${i + 1}: ${n.title || ''} ${n.content || ''}`).join('\n\n');
+            // If too long, truncate but keep representative content
+            if (allContent.length > 3000) allContent = allContent.substring(0, 3000) + '\n\n[...truncado]';
+
+            const prompt = `Resume en español de forma clara y concisa las siguientes notas (5-8 frases), extrae los temas principales, y sugiere 3 acciones concretas basadas en ellas:\n\n${allContent}`;
+            const summary = await askAI(prompt, { type: 'summary' });
+            ctx.replyWithMarkdown(
+                '📝 *Resumen de tus notas:*\n\n' +
+                `Tienes ${notes.length} notas recientes.\n` +
+                `Temas: ${topics || 'sin etiquetas'}` +
+                '\n\n' + summary
+            );
     } catch (error) {
+        console.error('Error /summary:', error?.message || error);
         ctx.reply('Error al generar resumen');
     }
 });
@@ -232,6 +333,7 @@ bot.command('calendar', async (ctx) => {
         });
         ctx.replyWithMarkdown(msg);
     } catch (error) {
+        console.error('Error /calendar:', error?.message || error);
         ctx.reply('Error al obtener eventos');
     }
 });
@@ -267,6 +369,7 @@ bot.command('today', async (ctx) => {
         });
         ctx.replyWithMarkdown(msg);
     } catch (error) {
+        console.error('Error /today:', error?.message || error);
         ctx.reply('Error al obtener eventos de hoy');
     }
 });
@@ -303,6 +406,7 @@ bot.command('gmail', async (ctx) => {
         }
         ctx.replyWithMarkdown(msg);
     } catch (error) {
+        console.error('Error /gmail:', error?.message || error);
         ctx.reply('Error al obtener emails');
     }
 });
@@ -339,6 +443,7 @@ bot.command('unread', async (ctx) => {
         }
         ctx.replyWithMarkdown(msg);
     } catch (error) {
+        console.error('Error /unread:', error?.message || error);
         ctx.reply('Error al obtener emails no leídos');
     }
 });
@@ -390,6 +495,7 @@ bot.command('code', async (ctx) => {
             '/unread - Emails no leídos'
         );
     } catch (error) {
+        console.error('Error exchanging code:', error?.message || error);
         ctx.reply('Error al intercambiar el código');
     }
 });
@@ -410,6 +516,7 @@ bot.command('reminder', async (ctx) => {
         await axios.post(API_URL, newNote);
         ctx.replyWithMarkdown('⏰ *Recordatorio guardado*\n\n"' + text + '"');
     } catch (error) {
+        console.error('Error /reminder:', error?.message || error);
         ctx.reply('Error al guardar recordatorio');
     }
 });
@@ -430,6 +537,7 @@ bot.command('task', async (ctx) => {
         await axios.post(API_URL, newNote);
         ctx.replyWithMarkdown('✅ *Tarea guardada*\n\n"' + text + '"');
     } catch (error) {
+        console.error('Error /task:', error?.message || error);
         ctx.reply('Error al guardar tarea');
     }
 });
@@ -446,6 +554,7 @@ bot.on('text', async (ctx) => {
         await axios.post(API_URL, newNote);
         ctx.reply('Nota guardada');
     } catch (error) {
+        console.error('Error saving note:', error?.message || error);
         ctx.reply('Error al guardar nota');
     }
 });
