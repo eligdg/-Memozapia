@@ -12,7 +12,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/backend/$1"
+      "dest": "http://memozapia-backend.onrender.com/api/$1"
     },
     {
       "src": "/(.*)",
