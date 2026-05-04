@@ -10,7 +10,7 @@ import './App.css';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const API_BASE = isDevelopment  
   ? 'http://localhost:3001'  
-  : 'https://memozapia.vercel.app/_/backend';
+  : 'https://memozapia-backend.onrender.com';
 
 const API_URL = `${API_BASE}/api/notes`;
 const TAGS_URL = `${API_BASE}/api/tags/all`;
