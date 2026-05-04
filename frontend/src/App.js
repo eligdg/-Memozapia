@@ -6,8 +6,14 @@ import SearchBar from './components/SearchBar';
 import TagFilter from './components/TagFilter';
 import './App.css';
 
-const API_URL = 'http://localhost:3001/api/notes';
-const TAGS_URL = 'http://localhost:3001/api/tags/all';
+// Cambia entre desarrollo y producción
+const isDevelopment = process.env.NODE_ENV === 'development';
+const API_BASE = isDevelopment  
+  ? 'http://localhost:3001'  
+  : 'https://TU_BACKEND_EN_RENDER.onrender.com';
+
+const API_URL = `${API_BASE}/api/notes`;
+const TAGS_URL = `${API_BASE}/api/tags/all`;
 
 function App() {
   const [notes, setNotes] = useState([]);
@@ -17,6 +23,7 @@ function App() {
   const [selectedTag, setSelectedTag] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Cargar notas y etiquetas
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -35,9 +42,11 @@ function App() {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [searchTerm, selectedTag]);
 
+  // Crear nota
   const createNote = async (noteData) => {
     try {
       const response = await axios.post(API_URL, noteData);
@@ -55,9 +64,10 @@ function App() {
     }
   };
 
+  // Actualizar nota
   const updateNote = async (id, noteData) => {
     try {
-      const response = await axios.put(API_URL + '/' + id, noteData);
+      const response = await axios.put(`${API_URL}/${id}`, noteData);
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (selectedTag) params.tag = selectedTag;
@@ -72,9 +82,10 @@ function App() {
     }
   };
 
+  // Eliminar nota
   const deleteNote = async (id) => {
     try {
-      await axios.delete(API_URL + '/' + id);
+      await axios.delete(`${API_URL}/${id}`);
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (selectedTag) params.tag = selectedTag;
@@ -94,23 +105,37 @@ function App() {
         <h1>Memozapia</h1>
         <p>Segundo Cerebro</p>
       </header>
+
       <div className="app-content">
         <aside className="sidebar">
           <button className="new-note-btn" onClick={() => setSelectedNote({ title: '', content: '', tags: [] })}>
             + Nueva Nota
           </button>
+
           <div className="glass-card">
             <SearchBar searchTerm={searchTerm} onSearch={setSearchTerm} />
           </div>
+
           <div className="glass-card">
-            <TagFilter tags={tags} selectedTag={selectedTag} onSelectTag={setSelectedTag} />
+            <TagFilter
+              tags={tags}
+              selectedTag={selectedTag}
+              onSelectTag={setSelectedTag}
+            />
           </div>
+
           {loading ? (
             <p style={{textAlign: 'center', color: '#94a3b8'}}>Cargando...</p>
           ) : (
-            <NoteList notes={notes} selectedNote={selectedNote} onSelectNote={setSelectedNote} onDeleteNote={deleteNote} />
+            <NoteList
+              notes={notes}
+              selectedNote={selectedNote}
+              onSelectNote={setSelectedNote}
+              onDeleteNote={deleteNote}
+            />
           )}
         </aside>
+
         <main className="main-content">
           {selectedNote ? (
             <NoteEditor
