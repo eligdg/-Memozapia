@@ -10,7 +10,7 @@ const API_URL = process.env.API_URL || 'http://localhost:3001/api/notes';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob';
+const GOOGLE_REDIRECT_URI = 'https://memozapia.vercel.app/_/backend/google-callback';
 
 const TOKENS_FILE = './google-tokens.json';
 const USER_STATES_FILE = './user-states.json';
