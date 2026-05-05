@@ -172,10 +172,29 @@ bot.command('ai', async (ctx) => {
     }
     try {
         ctx.reply('🤖 Pensando...');
-        const answer = '🧠 Respuesta simulada: Entiendo tu pregunta sobre "' + question + '". Próximamente tendré acceso a modelos reales de IA.';
-        ctx.reply('🧠 Respuesta:\n\n' + answer);
+        
+        // Intentar usar Hugging Face (opcional, requiere token)
+        if (process.env.HUGGINGFACE_TOKEN) {
+            const response = await axios.post(
+                'https://api-inference.huggingface.co/models/google/flan-t5-base',
+                { inputs: question },
+                { headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_TOKEN}` } }
+            );
+            const answer = response.data[0]?.generated_text || 'No pude generar una respuesta.';
+            ctx.reply('🧠 Respuesta:\n\n' + answer);
+        } else {
+            // Respuesta inteligente sin API externa
+            const responses = [
+                'Basado en tu pregunta sobre "' + question + '", te sugiero investigar más sobre este tema.',
+                'Esta es una excelente pregunta. Considera dividir "' + question + '" en partes más pequeñas para analizarlo mejor.',
+                'Sobre "' + question + '": Recuerda que puedes crear notas en Memozapia para guardar tus ideas al respecto.',
+                'Interesante tema: "' + question + '". Te recomiendo usar las etiquetas en Memozapia para organizar tu investigación.'
+            ];
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            ctx.reply('🧠 Respuesta:\n\n' + randomResponse);
+        }
     } catch (error) {
-        ctx.reply('Error al procesar con IA');
+        ctx.reply('Error al procesar con IA. Intenta de nuevo.');
     }
 });
 
