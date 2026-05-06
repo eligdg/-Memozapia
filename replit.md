@@ -40,10 +40,12 @@ A "Second Brain" note-taking app with AI-ready foundations — users can create,
 
 ## Product
 
-- Create, edit, and delete notes with title, content, and tags
+- Create, edit, and delete notes with title, content, tags, and optional scheduled date/time
 - Search notes by keyword (debounced 300ms)
 - Filter notes by tag
+- **Agenda/Calendar view**: month grid with note dots, day panel, "Nueva nota aquí" shortcut
 - Glassmorphism UI design with indigo/purple theme
+- Telegram bot (@Memozapia_bot) with AI chat, /notes, /search, /tags, /summary, /task, /reminder
 
 ## User preferences
 

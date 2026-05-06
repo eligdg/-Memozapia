@@ -7,6 +7,7 @@ export const notesTable = pgTable("notes", {
   title: text("title"),
   content: text("content").notNull(),
   tags: text("tags").array().notNull().default([]),
+  scheduled_at: timestamp("scheduled_at"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });

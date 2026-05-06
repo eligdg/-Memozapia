@@ -14,6 +14,7 @@ export interface Note {
   title?: string | null;
   content: string;
   tags: string[];
+  scheduled_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -27,12 +28,14 @@ export interface CreateNoteBody {
   title?: string | null;
   content: string;
   tags?: string[];
+  scheduled_at?: string | null;
 }
 
 export interface UpdateNoteBody {
   title?: string | null;
   content: string;
   tags?: string[];
+  scheduled_at?: string | null;
 }
 
 export type ListNotesParams = {

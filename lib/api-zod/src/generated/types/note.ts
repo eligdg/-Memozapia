@@ -11,6 +11,7 @@ export interface Note {
   title?: string | null;
   content: string;
   tags: string[];
+  scheduled_at?: string | null;
   created_at: string;
   updated_at: string;
 }

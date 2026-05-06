@@ -10,4 +10,5 @@ export interface UpdateNoteBody {
   title?: string | null;
   content: string;
   tags?: string[];
+  scheduled_at?: string | null;
 }

@@ -19,25 +19,65 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 1.2rem 2rem;
-  text-align: center;
+  padding: 1rem 2rem;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.mz-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .mz-app-header h1 {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: #4f46e5;
   letter-spacing: -0.5px;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.1rem;
 }
 
 .mz-app-header p {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #64748b;
   font-weight: 400;
 }
 
+/* View Tabs */
+.mz-view-tabs {
+  display: flex;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.mz-view-tab {
+  padding: 0.5rem 1.2rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.mz-view-tab:hover { background: rgba(255, 255, 255, 0.5); color: #1e293b; }
+.mz-view-tab.active {
+  background: rgba(79, 70, 229, 0.9);
+  color: white;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+/* Layout */
 .mz-app-content {
   display: flex;
   flex: 1;
@@ -49,7 +89,7 @@
 }
 
 .mz-sidebar {
-  width: 320px;
+  width: 300px;
   flex-shrink: 0;
 }
 
@@ -95,9 +135,7 @@
 }
 
 /* SearchBar */
-.mz-search-bar {
-  position: relative;
-}
+.mz-search-bar { position: relative; }
 
 .mz-search-input {
   width: 100%;
@@ -151,11 +189,7 @@
   font-weight: 600;
 }
 
-.mz-tags-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
+.mz-tags-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 .mz-tag-item {
   padding: 0.35rem 0.8rem;
@@ -178,7 +212,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  max-height: calc(100vh - 380px);
+  max-height: calc(100vh - 360px);
   overflow-y: auto;
   padding-right: 0.5rem;
 }
@@ -230,7 +264,6 @@
 .mz-delete-btn:hover { background: rgba(239, 68, 68, 0.2); }
 
 .mz-note-preview { font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem; line-height: 1.4; }
-
 .mz-note-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.4rem; }
 
 .mz-tag-badge {
@@ -244,7 +277,7 @@
 }
 
 .mz-note-date { font-size: 0.7rem; color: #94a3b8; }
-
+.mz-note-scheduled { font-size: 0.75rem; color: #6366f1; margin-bottom: 0.3rem; font-weight: 500; }
 .mz-no-notes { text-align: center; color: #94a3b8; padding: 2rem; font-size: 0.9rem; }
 
 /* NoteEditor */
@@ -276,7 +309,7 @@
 
 .mz-editor-content {
   width: 100%;
-  min-height: 350px;
+  min-height: 280px;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.6);
@@ -293,6 +326,50 @@
 .mz-editor-content:focus { outline: none; background: rgba(255, 255, 255, 0.7); border-color: rgba(79, 70, 229, 0.5); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
 .mz-editor-content::placeholder { color: #94a3b8; }
 
+/* Date picker row */
+.mz-editor-date-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.mz-date-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.mz-datetime-input {
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #1e293b;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.mz-datetime-input:focus { outline: none; border-color: rgba(79, 70, 229, 0.5); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); background: rgba(255,255,255,0.7); }
+
+.mz-clear-date {
+  padding: 0.45rem 0.9rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.mz-clear-date:hover { background: rgba(239, 68, 68, 0.2); }
+
+/* Editor Tags */
 .mz-editor-tags { margin-bottom: 1.2rem; }
 
 .mz-editor-tags h4 {
@@ -379,10 +456,281 @@
 
 .mz-empty-state h2 { color: #94a3b8; font-weight: 400; font-size: 1.1rem; }
 
+/* ═══════════════════════════════════════════════
+   CALENDAR / AGENDA
+   ═══════════════════════════════════════════════ */
+
+.mz-calendar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+/* Month grid card */
+.mz-calendar {
+  padding: 1.4rem;
+}
+
+.mz-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+
+.mz-cal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.mz-cal-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: -0.3px;
+  text-transform: capitalize;
+}
+
+.mz-cal-today {
+  padding: 0.25rem 0.7rem;
+  background: rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4f46e5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mz-cal-today:hover { background: rgba(79, 70, 229, 0.2); }
+
+.mz-cal-nav {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  font-size: 1.3rem;
+  color: #4f46e5;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.mz-cal-nav:hover { background: rgba(79, 70, 229, 0.1); transform: scale(1.05); }
+
+/* 7-col grid */
+.mz-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.mz-cal-day-name {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.4rem 0;
+}
+
+.mz-cal-cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.3rem 0.2rem 0.2rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid transparent;
+  min-height: 48px;
+}
+
+.mz-cal-cell:hover {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.7);
+  transform: scale(1.04);
+}
+
+.mz-cal-empty {
+  background: transparent;
+  border: none;
+  cursor: default;
+  pointer-events: none;
+}
+.mz-cal-empty:hover { transform: none; background: transparent; }
+
+.mz-cal-today-cell {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.3);
+}
+
+.mz-cal-selected {
+  background: rgba(79, 70, 229, 0.22) !important;
+  border-color: rgba(79, 70, 229, 0.5) !important;
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.2);
+}
+
+.mz-cal-day-num {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.mz-cal-today-cell .mz-cal-day-num {
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.mz-cal-selected .mz-cal-day-num {
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+/* Note dots */
+.mz-cal-dots {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 3px;
+}
+
+.mz-cal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  display: block;
+  flex-shrink: 0;
+}
+
+.mz-cal-dot-more {
+  font-size: 0.6rem;
+  color: #6366f1;
+  font-weight: 700;
+}
+
+/* Day panel */
+.mz-day-panel {
+  padding: 1.2rem 1.4rem;
+}
+
+.mz-day-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.mz-day-panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  text-transform: capitalize;
+}
+
+.mz-day-new-btn {
+  padding: 0.45rem 1rem;
+  background: rgba(79, 70, 229, 0.8);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.mz-day-new-btn:hover { background: rgba(79, 70, 229, 0.9); transform: translateY(-1px); }
+
+.mz-day-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.mz-day-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.mz-day-notes::-webkit-scrollbar { width: 4px; }
+.mz-day-notes::-webkit-scrollbar-thumb { background: rgba(79, 70, 229, 0.3); border-radius: 4px; }
+
+.mz-day-note {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mz-day-note:hover {
+  background: rgba(255, 255, 255, 0.65);
+  transform: translateX(3px);
+  border-color: rgba(79, 70, 229, 0.25);
+}
+
+.mz-day-note-time {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4f46e5;
+  white-space: nowrap;
+  padding-top: 2px;
+  min-width: 38px;
+}
+
+.mz-day-note-body { flex: 1; min-width: 0; }
+
+.mz-day-note-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mz-day-note-preview {
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .mz-app-content { flex-direction: column; padding: 1rem; }
   .mz-sidebar { width: 100%; }
   .mz-note-editor { padding: 1rem; }
-  .mz-editor-content { min-height: 250px; }
+  .mz-editor-content { min-height: 200px; }
+  .mz-header-inner { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+  .mz-cal-cell { min-height: 40px; }
+  .mz-cal-day-num { font-size: 0.78rem; }
 }

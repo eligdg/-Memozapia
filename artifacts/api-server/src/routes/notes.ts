@@ -41,6 +41,7 @@ router.get("/", async (req, res) => {
     return res.json(
       notes.map((n) => ({
         ...n,
+        scheduled_at: n.scheduled_at ? n.scheduled_at.toISOString() : null,
         created_at: n.created_at.toISOString(),
         updated_at: n.updated_at.toISOString(),
       })),
@@ -83,6 +84,7 @@ router.get("/:id", async (req, res) => {
     if (!note) return res.status(404).json({ error: "Nota no encontrada" });
     return res.json({
       ...note,
+      scheduled_at: note.scheduled_at ? note.scheduled_at.toISOString() : null,
       created_at: note.created_at.toISOString(),
       updated_at: note.updated_at.toISOString(),
     });
@@ -108,10 +110,12 @@ router.post("/", async (req, res) => {
         title: body.title ?? null,
         content: body.content,
         tags: body.tags ?? [],
+        scheduled_at: body.scheduled_at ? new Date(body.scheduled_at) : null,
       })
       .returning();
     return res.status(201).json({
       ...note,
+      scheduled_at: note.scheduled_at ? note.scheduled_at.toISOString() : null,
       created_at: note.created_at.toISOString(),
       updated_at: note.updated_at.toISOString(),
     });
@@ -135,6 +139,7 @@ router.put("/:id", async (req, res) => {
         title: body.title ?? null,
         content: body.content,
         tags: body.tags ?? [],
+        scheduled_at: body.scheduled_at !== undefined ? (body.scheduled_at ? new Date(body.scheduled_at) : null) : undefined,
         updated_at: new Date(),
       })
       .where(eq(notesTable.id, id))
@@ -142,6 +147,7 @@ router.put("/:id", async (req, res) => {
     if (!note) return res.status(404).json({ error: "Nota no encontrada" });
     return res.json({
       ...note,
+      scheduled_at: note.scheduled_at ? note.scheduled_at.toISOString() : null,
       created_at: note.created_at.toISOString(),
       updated_at: note.updated_at.toISOString(),
     });

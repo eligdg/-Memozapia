@@ -12,6 +12,7 @@ type Note = {
   title?: string | null;
   content: string;
   tags: string[];
+  scheduled_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -21,9 +22,11 @@ type Tag = {
   name: string;
 };
 
+type ActiveView = "notas" | "agenda";
+
+// ─── SearchBar ────────────────────────────────────────────────────────────────
 function SearchBar({ searchTerm, onSearch }: { searchTerm: string; onSearch: (s: string) => void }) {
   const [inputValue, setInputValue] = useState(searchTerm);
-
   useEffect(() => {
     const timer = setTimeout(() => onSearch(inputValue), 300);
     return () => clearTimeout(timer);
@@ -45,6 +48,7 @@ function SearchBar({ searchTerm, onSearch }: { searchTerm: string; onSearch: (s:
   );
 }
 
+// ─── TagFilter ────────────────────────────────────────────────────────────────
 function TagFilter({ tags, selectedTag, onSelectTag }: { tags: Tag[]; selectedTag: string | null; onSelectTag: (t: string | null) => void }) {
   return (
     <div className="mz-tag-filter">
@@ -65,12 +69,12 @@ function TagFilter({ tags, selectedTag, onSelectTag }: { tags: Tag[]; selectedTa
   );
 }
 
+// ─── NoteList ─────────────────────────────────────────────────────────────────
 function NoteList({ notes, selectedNote, onSelectNote, onDeleteNote }: { notes: Note[]; selectedNote: Note | null; onSelectNote: (n: Note) => void; onDeleteNote: (id: number) => void }) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
-
   const truncateText = (text: string, maxLength = 60) => {
     if (!text) return "";
     return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
@@ -105,6 +109,11 @@ function NoteList({ notes, selectedNote, onSelectNote, onDeleteNote }: { notes: 
                 ))}
               </div>
             )}
+            {note.scheduled_at && (
+              <div className="mz-note-scheduled">
+                📅 {new Date(note.scheduled_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </div>
+            )}
             <span className="mz-note-date">{formatDate(note.updated_at)}</span>
           </div>
         ))
@@ -113,30 +122,50 @@ function NoteList({ notes, selectedNote, onSelectNote, onDeleteNote }: { notes: 
   );
 }
 
-function NoteEditor({ note, tags, onSave, onCancel }: { note: Note | { title: string; content: string; tags: string[] }; tags: Tag[]; onSave: (data: { title: string | null; content: string; tags: string[] }) => void; onCancel: () => void }) {
+// ─── NoteEditor ───────────────────────────────────────────────────────────────
+function NoteEditor({
+  note,
+  tags,
+  onSave,
+  onCancel,
+}: {
+  note: Note | { title: string; content: string; tags: string[]; scheduled_at?: string | null };
+  tags: Tag[];
+  onSave: (data: { title: string | null; content: string; tags: string[]; scheduled_at: string | null }) => void;
+  onCancel: () => void;
+}) {
   const [title, setTitle] = useState(note.title || "");
   const [content, setContent] = useState(note.content || "");
-  const [selectedTags, setSelectedTags] = useState<string[]>(note.tags ? note.tags.map((t: string | Tag) => (typeof t === "string" ? t : t.name)) : []);
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    note.tags ? note.tags.map((t: string | Tag) => (typeof t === "string" ? t : t.name)) : []
+  );
   const [newTag, setNewTag] = useState("");
   const [allTags, setAllTags] = useState<Tag[]>(tags);
+  const [scheduledAt, setScheduledAt] = useState<string>(
+    note.scheduled_at ? note.scheduled_at.slice(0, 16) : ""
+  );
 
   useEffect(() => {
     setTitle(note.title || "");
     setContent(note.content || "");
     setSelectedTags(note.tags ? note.tags.map((t: string | Tag) => (typeof t === "string" ? t : t.name)) : []);
+    setScheduledAt(note.scheduled_at ? note.scheduled_at.slice(0, 16) : "");
   }, [(note as Note).id]);
 
   const handleSave = () => {
     if (!content.trim()) { alert("El contenido es requerido"); return; }
-    onSave({ title: (title.trim() || null) as string | null, content, tags: selectedTags });
+    onSave({
+      title: (title.trim() || null) as string | null,
+      content,
+      tags: selectedTags,
+      scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+    });
   };
 
   const toggleTag = (tagName: string) => {
-    if (selectedTags.includes(tagName)) {
-      setSelectedTags(selectedTags.filter((t) => t !== tagName));
-    } else {
-      setSelectedTags([...selectedTags, tagName]);
-    }
+    setSelectedTags(selectedTags.includes(tagName)
+      ? selectedTags.filter((t) => t !== tagName)
+      : [...selectedTags, tagName]);
   };
 
   const addNewTag = () => {
@@ -153,6 +182,20 @@ function NoteEditor({ note, tags, onSave, onCancel }: { note: Note | { title: st
     <div className="mz-note-editor">
       <input type="text" placeholder="Título (opcional)" value={title} onChange={(e) => setTitle(e.target.value)} className="mz-editor-title" />
       <textarea placeholder="Escribe tu nota aquí..." value={content} onChange={(e) => setContent(e.target.value)} className="mz-editor-content" autoFocus />
+
+      <div className="mz-editor-date-row">
+        <label className="mz-date-label">📅 Programar para:</label>
+        <input
+          type="datetime-local"
+          value={scheduledAt}
+          onChange={(e) => setScheduledAt(e.target.value)}
+          className="mz-datetime-input"
+        />
+        {scheduledAt && (
+          <button className="mz-clear-date" onClick={() => setScheduledAt("")}>Quitar fecha</button>
+        )}
+      </div>
+
       <div className="mz-editor-tags">
         <h4>Etiquetas</h4>
         <div className="mz-tag-selector">
@@ -165,6 +208,7 @@ function NoteEditor({ note, tags, onSave, onCancel }: { note: Note | { title: st
           <button onClick={addNewTag}>Añadir</button>
         </div>
       </div>
+
       <div className="mz-editor-actions">
         <button className="mz-cancel-btn" onClick={onCancel}>Cancelar</button>
         <button className="mz-save-btn" onClick={handleSave}>{(note as Note).id ? "Actualizar" : "Guardar"}</button>
@@ -173,11 +217,149 @@ function NoteEditor({ note, tags, onSave, onCancel }: { note: Note | { title: st
   );
 }
 
+// ─── CalendarView ─────────────────────────────────────────────────────────────
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DIAS_CORTOS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+function CalendarView({
+  notes,
+  onSelectNote,
+  onNewNoteForDate,
+}: {
+  notes: Note[];
+  onSelectNote: (n: Note) => void;
+  onNewNoteForDate: (date: Date) => void;
+}) {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDay, setSelectedDay] = useState<Date | null>(today);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const firstDayOfMonth = new Date(year, month, 1);
+  // Monday-based: 0=Mon...6=Sun
+  let startOffset = firstDayOfMonth.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  const scheduledNotes = notes.filter((n) => n.scheduled_at);
+
+  const notesForDate = (d: Date) =>
+    scheduledNotes.filter((n) => {
+      const nd = new Date(n.scheduled_at!);
+      return nd.getFullYear() === d.getFullYear() && nd.getMonth() === d.getMonth() && nd.getDate() === d.getDate();
+    });
+
+  const selectedDayNotes = selectedDay ? notesForDate(selectedDay) : [];
+
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+  const goToday = () => { setViewDate(new Date(today.getFullYear(), today.getMonth(), 1)); setSelectedDay(today); };
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const formatTimeShort = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <div className="mz-calendar-wrapper">
+      {/* Month Grid */}
+      <div className="mz-calendar mz-glass-card">
+        <div className="mz-cal-header">
+          <button className="mz-cal-nav" onClick={prevMonth}>‹</button>
+          <div className="mz-cal-title-group">
+            <h2 className="mz-cal-title">{MESES[month]} {year}</h2>
+            <button className="mz-cal-today" onClick={goToday}>Hoy</button>
+          </div>
+          <button className="mz-cal-nav" onClick={nextMonth}>›</button>
+        </div>
+
+        <div className="mz-cal-grid">
+          {DIAS_CORTOS.map((d) => (
+            <div key={d} className="mz-cal-day-name">{d}</div>
+          ))}
+          {Array.from({ length: totalCells }).map((_, i) => {
+            const dayNum = i - startOffset + 1;
+            if (dayNum < 1 || dayNum > daysInMonth) return <div key={i} className="mz-cal-cell mz-cal-empty" />;
+            const cellDate = new Date(year, month, dayNum);
+            const dayNotes = notesForDate(cellDate);
+            const isToday = isSameDay(cellDate, today);
+            const isSelected = selectedDay && isSameDay(cellDate, selectedDay);
+            return (
+              <div
+                key={i}
+                className={`mz-cal-cell ${isToday ? "mz-cal-today-cell" : ""} ${isSelected ? "mz-cal-selected" : ""}`}
+                onClick={() => setSelectedDay(cellDate)}
+              >
+                <span className="mz-cal-day-num">{dayNum}</span>
+                {dayNotes.length > 0 && (
+                  <div className="mz-cal-dots">
+                    {dayNotes.slice(0, 3).map((n) => (
+                      <span key={n.id} className="mz-cal-dot" title={n.title || n.content} />
+                    ))}
+                    {dayNotes.length > 3 && <span className="mz-cal-dot-more">+{dayNotes.length - 3}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Day Panel */}
+      {selectedDay && (
+        <div className="mz-day-panel mz-glass-card">
+          <div className="mz-day-panel-header">
+            <h3 className="mz-day-panel-title">
+              {selectedDay.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
+            </h3>
+            <button
+              className="mz-day-new-btn"
+              onClick={() => onNewNoteForDate(selectedDay)}
+            >+ Nueva nota aquí</button>
+          </div>
+
+          {selectedDayNotes.length === 0 ? (
+            <p className="mz-day-empty">Sin notas programadas para este día</p>
+          ) : (
+            <div className="mz-day-notes">
+              {selectedDayNotes
+                .sort((a, b) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime())
+                .map((note) => (
+                  <div key={note.id} className="mz-day-note" onClick={() => onSelectNote(note)}>
+                    <div className="mz-day-note-time">{formatTimeShort(note.scheduled_at!)}</div>
+                    <div className="mz-day-note-body">
+                      <div className="mz-day-note-title">{note.title || "Sin título"}</div>
+                      <div className="mz-day-note-preview">{note.content.slice(0, 80)}{note.content.length > 80 ? "…" : ""}</div>
+                      {note.tags.length > 0 && (
+                        <div className="mz-note-tags" style={{ marginTop: "0.3rem" }}>
+                          {note.tags.map((t, i) => <span key={i} className="mz-tag-badge">{t}</span>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MemozapiaApp ─────────────────────────────────────────────────────────────
 function MemozapiaApp() {
   const queryClient = useQueryClient();
-  const [selectedNote, setSelectedNote] = useState<Note | { title: string; content: string; tags: string[] } | null>(null);
+  const [selectedNote, setSelectedNote] = useState<Note | { title: string; content: string; tags: string[]; scheduled_at?: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<ActiveView>("notas");
 
   const { data: notes = [], isLoading } = useListNotes({ search: searchTerm || undefined, tag: selectedTag || undefined });
   const { data: tags = [] } = useListTags();
@@ -190,7 +372,7 @@ function MemozapiaApp() {
     queryClient.invalidateQueries({ queryKey: getListTagsQueryKey() });
   }, [queryClient]);
 
-  const handleSave = async (noteData: { title: string | null; content: string; tags: string[] }) => {
+  const handleSave = async (noteData: { title: string | null; content: string; tags: string[]; scheduled_at: string | null }) => {
     if (selectedNote && (selectedNote as Note).id) {
       const updated = await updateNote.mutateAsync({ id: (selectedNote as Note).id, data: noteData });
       refreshData();
@@ -213,13 +395,34 @@ function MemozapiaApp() {
     queryClient.invalidateQueries({ queryKey: getListNotesQueryKey() });
   }, [queryClient]);
 
+  const handleNewNoteForDate = (date: Date) => {
+    const iso = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0).toISOString();
+    setSelectedNote({ title: "", content: "", tags: [], scheduled_at: iso });
+  };
+
   return (
     <div className="mz-app">
       <header className="mz-app-header mz-glass-card">
-        <h1>Memozapia</h1>
-        <p>Segundo Cerebro</p>
+        <div className="mz-header-inner">
+          <div>
+            <h1>Memozapia</h1>
+            <p>Segundo Cerebro</p>
+          </div>
+          <nav className="mz-view-tabs">
+            <button
+              className={`mz-view-tab ${activeView === "notas" ? "active" : ""}`}
+              onClick={() => setActiveView("notas")}
+            >📝 Notas</button>
+            <button
+              className={`mz-view-tab ${activeView === "agenda" ? "active" : ""}`}
+              onClick={() => setActiveView("agenda")}
+            >📅 Agenda</button>
+          </nav>
+        </div>
       </header>
+
       <div className="mz-app-content">
+        {/* Sidebar — always visible */}
         <aside className="mz-sidebar">
           <button className="mz-new-note-btn" onClick={() => setSelectedNote({ title: "", content: "", tags: [] })}>
             + Nueva Nota
@@ -241,6 +444,8 @@ function MemozapiaApp() {
             />
           )}
         </aside>
+
+        {/* Main area — switches between Notas and Agenda */}
         <main className="mz-main-content">
           {selectedNote ? (
             <NoteEditor
@@ -248,6 +453,12 @@ function MemozapiaApp() {
               tags={tags as Tag[]}
               onSave={handleSave}
               onCancel={() => setSelectedNote(null)}
+            />
+          ) : activeView === "agenda" ? (
+            <CalendarView
+              notes={notes as unknown as Note[]}
+              onSelectNote={(n) => setSelectedNote(n)}
+              onNewNoteForDate={handleNewNoteForDate}
             />
           ) : (
             <div className="mz-empty-state mz-glass-card">
@@ -260,6 +471,7 @@ function MemozapiaApp() {
   );
 }
 
+// ─── Router / App ─────────────────────────────────────────────────────────────
 function Router() {
   return (
     <Switch>

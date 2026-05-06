@@ -178,6 +178,9 @@ components:
           type: array
           items:
             type: string
+        scheduled_at:
+          type: string
+          nullable: true
         created_at:
           type: string
         updated_at:
@@ -212,6 +215,9 @@ components:
           type: array
           items:
             type: string
+        scheduled_at:
+          type: string
+          nullable: true
       required:
         - content
 
@@ -227,5 +233,8 @@ components:
           type: array
           items:
             type: string
+        scheduled_at:
+          type: string
+          nullable: true
       required:
         - content
