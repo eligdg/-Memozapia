@@ -18,8 +18,8 @@ async function askAI(question: string): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-5",
-      max_completion_tokens: 512,
+      model: "gpt-5-mini",
+      max_completion_tokens: 1024,
       messages: [
         {
           role: "system",
