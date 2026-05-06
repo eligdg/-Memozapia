@@ -15,6 +15,7 @@ export interface Note {
   content: string;
   tags: string[];
   scheduled_at?: string | null;
+  gcal_event_id?: string | null;
   created_at: string;
   updated_at: string;
 }

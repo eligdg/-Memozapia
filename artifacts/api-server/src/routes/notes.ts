@@ -42,6 +42,7 @@ router.get("/", async (req, res) => {
       notes.map((n) => ({
         ...n,
         scheduled_at: n.scheduled_at ? n.scheduled_at.toISOString() : null,
+        gcal_event_id: n.gcal_event_id ?? null,
         created_at: n.created_at.toISOString(),
         updated_at: n.updated_at.toISOString(),
       })),

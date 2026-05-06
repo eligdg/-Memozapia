@@ -506,6 +506,12 @@
 
 .mz-cal-today:hover { background: rgba(79, 70, 229, 0.2); }
 
+.mz-cal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .mz-cal-nav {
   width: 36px;
   height: 36px;
@@ -524,6 +530,24 @@
 }
 
 .mz-cal-nav:hover { background: rgba(79, 70, 229, 0.1); transform: scale(1.05); }
+
+/* Google Calendar sync button */
+.mz-sync-btn {
+  padding: 0.4rem 0.9rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4f46e5;
+  cursor: pointer;
+  transition: all 0.25s;
+  white-space: nowrap;
+}
+.mz-sync-btn:hover:not(:disabled) { background: rgba(79, 70, 229, 0.12); transform: translateY(-1px); }
+.mz-sync-btn:disabled { opacity: 0.7; cursor: default; }
+.mz-sync-btn.ok { color: #16a34a; border-color: rgba(22, 163, 74, 0.35); background: rgba(22, 163, 74, 0.08); }
+.mz-sync-btn.error { color: #dc2626; border-color: rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.08); }
 
 /* 7-col grid */
 .mz-cal-grid {

@@ -8,6 +8,7 @@ export const notesTable = pgTable("notes", {
   content: text("content").notNull(),
   tags: text("tags").array().notNull().default([]),
   scheduled_at: timestamp("scheduled_at"),
+  gcal_event_id: text("gcal_event_id"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });

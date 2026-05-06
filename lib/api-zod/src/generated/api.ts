@@ -30,6 +30,7 @@ export const ListNotesResponseItem = zod.object({
   content: zod.string(),
   tags: zod.array(zod.string()),
   scheduled_at: zod.string().nullish(),
+  gcal_event_id: zod.string().nullish(),
   created_at: zod.string(),
   updated_at: zod.string(),
 });
@@ -67,6 +68,7 @@ export const GetNoteResponse = zod.object({
   content: zod.string(),
   tags: zod.array(zod.string()),
   scheduled_at: zod.string().nullish(),
+  gcal_event_id: zod.string().nullish(),
   created_at: zod.string(),
   updated_at: zod.string(),
 });
@@ -91,6 +93,7 @@ export const UpdateNoteResponse = zod.object({
   content: zod.string(),
   tags: zod.array(zod.string()),
   scheduled_at: zod.string().nullish(),
+  gcal_event_id: zod.string().nullish(),
   created_at: zod.string(),
   updated_at: zod.string(),
 });

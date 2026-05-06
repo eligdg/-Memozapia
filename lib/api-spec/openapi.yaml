@@ -181,6 +181,9 @@ components:
         scheduled_at:
           type: string
           nullable: true
+        gcal_event_id:
+          type: string
+          nullable: true
         created_at:
           type: string
         updated_at:

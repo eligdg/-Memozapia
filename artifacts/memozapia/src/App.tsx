@@ -13,6 +13,7 @@ type Note = {
   content: string;
   tags: string[];
   scheduled_at?: string | null;
+  gcal_event_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -221,15 +222,40 @@ function NoteEditor({
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const DIAS_CORTOS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 
+type SyncStatus = "idle" | "syncing" | "ok" | "error";
+
 function CalendarView({
   notes,
   onSelectNote,
   onNewNoteForDate,
+  onSyncDone,
 }: {
   notes: Note[];
   onSelectNote: (n: Note) => void;
   onNewNoteForDate: (date: Date) => void;
+  onSyncDone: () => void;
 }) {
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncMsg, setSyncMsg] = useState("");
+
+  const handleSync = async () => {
+    setSyncStatus("syncing");
+    setSyncMsg("");
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const resp = await fetch(`${base}/api/calendar/sync`, { method: "POST" });
+      const data = await resp.json() as { synced?: number; error?: string };
+      if (!resp.ok || data.error) throw new Error(data.error ?? "Error desconocido");
+      setSyncStatus("ok");
+      setSyncMsg(`${data.synced} nota${data.synced === 1 ? "" : "s"} sincronizada${data.synced === 1 ? "" : "s"}`);
+      onSyncDone();
+      setTimeout(() => setSyncStatus("idle"), 4000);
+    } catch (e: unknown) {
+      setSyncStatus("error");
+      setSyncMsg(e instanceof Error ? e.message : "Error al sincronizar");
+      setTimeout(() => setSyncStatus("idle"), 5000);
+    }
+  };
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState<Date | null>(today);
@@ -277,7 +303,17 @@ function CalendarView({
             <h2 className="mz-cal-title">{MESES[month]} {year}</h2>
             <button className="mz-cal-today" onClick={goToday}>Hoy</button>
           </div>
-          <button className="mz-cal-nav" onClick={nextMonth}>›</button>
+          <div className="mz-cal-header-right">
+            <button
+              className={`mz-sync-btn ${syncStatus}`}
+              onClick={handleSync}
+              disabled={syncStatus === "syncing"}
+              title="Sincronizar notas con Google Calendar"
+            >
+              {syncStatus === "syncing" ? "⏳ Sincronizando..." : syncStatus === "ok" ? `✅ ${syncMsg}` : syncStatus === "error" ? `❌ ${syncMsg}` : "🔄 Sync Google"}
+            </button>
+            <button className="mz-cal-nav" onClick={nextMonth}>›</button>
+          </div>
         </div>
 
         <div className="mz-cal-grid">
@@ -459,6 +495,7 @@ function MemozapiaApp() {
               notes={notes as unknown as Note[]}
               onSelectNote={(n) => setSelectedNote(n)}
               onNewNoteForDate={handleNewNoteForDate}
+              onSyncDone={refreshData}
             />
           ) : (
             <div className="mz-empty-state mz-glass-card">
