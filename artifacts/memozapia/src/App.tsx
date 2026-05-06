@@ -452,6 +452,7 @@ function MemozapiaApp() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>("notas");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: notes = [], isLoading } = useListNotes({ search: searchTerm || undefined, tag: selectedTag || undefined });
   const { data: tags = [] } = useListTags();
@@ -463,6 +464,16 @@ function MemozapiaApp() {
     queryClient.invalidateQueries({ queryKey: getListNotesQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListTagsQueryKey() });
   }, [queryClient]);
+
+  const openNote = (note: Note | { title: string; content: string; tags: string[]; scheduled_at?: string | null }) => {
+    setSelectedNote(note);
+    setSidebarOpen(false);
+  };
+
+  const handleCancel = () => {
+    setSelectedNote(null);
+    setSidebarOpen(true);
+  };
 
   const handleSave = async (noteData: { title: string | null; content: string; tags: string[]; scheduled_at: string | null }) => {
     if (selectedNote && (selectedNote as Note).id) {
@@ -479,7 +490,10 @@ function MemozapiaApp() {
   const handleDelete = async (id: number) => {
     await deleteNote.mutateAsync({ id });
     refreshData();
-    if (selectedNote && (selectedNote as Note).id === id) setSelectedNote(null);
+    if (selectedNote && (selectedNote as Note).id === id) {
+      setSelectedNote(null);
+      setSidebarOpen(true);
+    }
   };
 
   const handleSearch = useCallback((s: string) => {
@@ -489,36 +503,52 @@ function MemozapiaApp() {
 
   const handleNewNoteForDate = (date: Date) => {
     const iso = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0).toISOString();
-    setSelectedNote({ title: "", content: "", tags: [], scheduled_at: iso });
+    openNote({ title: "", content: "", tags: [], scheduled_at: iso });
+  };
+
+  const handleNewNote = () => openNote({ title: "", content: "", tags: [] });
+
+  const changeView = (v: ActiveView) => {
+    setActiveView(v);
+    setSelectedNote(null);
+    setSidebarOpen(false);
   };
 
   return (
     <div className="mz-app">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="mz-sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       <header className="mz-app-header mz-glass-card">
         <div className="mz-header-inner">
-          <div>
+          {/* Hamburger — mobile only */}
+          <button
+            className="mz-hamburger"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Abrir menú"
+          >
+            {sidebarOpen ? "✕" : "☰"}
+          </button>
+
+          <div className="mz-brand">
             <h1>Memozapia</h1>
             <p>Segundo Cerebro</p>
           </div>
+
+          {/* Tabs — desktop/tablet */}
           <nav className="mz-view-tabs">
-            <button
-              className={`mz-view-tab ${activeView === "notas" ? "active" : ""}`}
-              onClick={() => setActiveView("notas")}
-            >📝 Notas</button>
-            <button
-              className={`mz-view-tab ${activeView === "agenda" ? "active" : ""}`}
-              onClick={() => setActiveView("agenda")}
-            >📅 Agenda</button>
+            <button className={`mz-view-tab ${activeView === "notas" ? "active" : ""}`} onClick={() => changeView("notas")}>📝 Notas</button>
+            <button className={`mz-view-tab ${activeView === "agenda" ? "active" : ""}`} onClick={() => changeView("agenda")}>📅 Agenda</button>
           </nav>
         </div>
       </header>
 
       <div className="mz-app-content">
-        {/* Sidebar — always visible */}
-        <aside className="mz-sidebar">
-          <button className="mz-new-note-btn" onClick={() => setSelectedNote({ title: "", content: "", tags: [] })}>
-            + Nueva Nota
-          </button>
+        {/* Sidebar */}
+        <aside className={`mz-sidebar ${sidebarOpen ? "mz-sidebar--open" : ""}`}>
+          <button className="mz-new-note-btn" onClick={handleNewNote}>+ Nueva Nota</button>
           <div className="mz-glass-card">
             <SearchBar searchTerm={searchTerm} onSearch={handleSearch} />
           </div>
@@ -531,25 +561,25 @@ function MemozapiaApp() {
             <NoteList
               notes={notes as unknown as Note[]}
               selectedNote={selectedNote as Note}
-              onSelectNote={setSelectedNote}
+              onSelectNote={(n) => openNote(n)}
               onDeleteNote={handleDelete}
             />
           )}
         </aside>
 
-        {/* Main area — switches between Notas and Agenda */}
+        {/* Main content */}
         <main className="mz-main-content">
           {selectedNote ? (
             <NoteEditor
               note={selectedNote as Note}
               tags={tags as Tag[]}
               onSave={handleSave}
-              onCancel={() => setSelectedNote(null)}
+              onCancel={handleCancel}
             />
           ) : activeView === "agenda" ? (
             <CalendarView
               notes={notes as unknown as Note[]}
-              onSelectNote={(n) => setSelectedNote(n)}
+              onSelectNote={(n) => openNote(n)}
               onNewNoteForDate={handleNewNoteForDate}
               onSyncDone={refreshData}
             />
@@ -560,6 +590,30 @@ function MemozapiaApp() {
           )}
         </main>
       </div>
+
+      {/* Bottom nav — mobile only */}
+      <nav className="mz-mobile-nav">
+        <button
+          className={`mz-mobile-nav-btn ${activeView === "notas" && !selectedNote ? "active" : ""}`}
+          onClick={() => changeView("notas")}
+        >
+          <span className="mz-mobile-nav-icon">📝</span>
+          <span className="mz-mobile-nav-label">Notas</span>
+        </button>
+        <button
+          className="mz-mobile-nav-btn mz-mobile-nav-center"
+          onClick={handleNewNote}
+        >
+          <span className="mz-mobile-nav-plus">+</span>
+        </button>
+        <button
+          className={`mz-mobile-nav-btn ${activeView === "agenda" && !selectedNote ? "active" : ""}`}
+          onClick={() => changeView("agenda")}
+        >
+          <span className="mz-mobile-nav-icon">📅</span>
+          <span className="mz-mobile-nav-label">Agenda</span>
+        </button>
+      </nav>
     </div>
   );
 }
