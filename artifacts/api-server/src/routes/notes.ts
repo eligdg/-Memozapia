@@ -38,7 +38,7 @@ router.get("/", async (req, res) => {
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
     );
 
-    res.json(
+    return res.json(
       notes.map((n) => ({
         ...n,
         created_at: n.created_at.toISOString(),
@@ -50,7 +50,7 @@ router.get("/", async (req, res) => {
       return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
     }
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -65,10 +65,10 @@ router.get("/tags/all", async (req, res) => {
     const tags = Array.from(tagSet)
       .sort()
       .map((name, index) => ({ id: index + 1, name }));
-    res.json(tags);
+    return res.json(tags);
   } catch (err) {
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -81,7 +81,7 @@ router.get("/:id", async (req, res) => {
       .from(notesTable)
       .where(eq(notesTable.id, id));
     if (!note) return res.status(404).json({ error: "Nota no encontrada" });
-    res.json({
+    return res.json({
       ...note,
       created_at: note.created_at.toISOString(),
       updated_at: note.updated_at.toISOString(),
@@ -91,7 +91,7 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
     }
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -110,7 +110,7 @@ router.post("/", async (req, res) => {
         tags: body.tags ?? [],
       })
       .returning();
-    res.status(201).json({
+    return res.status(201).json({
       ...note,
       created_at: note.created_at.toISOString(),
       updated_at: note.updated_at.toISOString(),
@@ -120,7 +120,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Invalid request body", details: err.issues });
     }
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -140,7 +140,7 @@ router.put("/:id", async (req, res) => {
       .where(eq(notesTable.id, id))
       .returning();
     if (!note) return res.status(404).json({ error: "Nota no encontrada" });
-    res.json({
+    return res.json({
       ...note,
       created_at: note.created_at.toISOString(),
       updated_at: note.updated_at.toISOString(),
@@ -150,7 +150,7 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid request body", details: err.issues });
     }
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -163,13 +163,13 @@ router.delete("/:id", async (req, res) => {
       .where(eq(notesTable.id, id))
       .returning();
     if (!deleted) return res.status(404).json({ error: "Nota no encontrada" });
-    res.json({ message: "Nota eliminada correctamente" });
+    return res.json({ message: "Nota eliminada correctamente" });
   } catch (err) {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
     }
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
