@@ -4,6 +4,45 @@ import { logger } from "./lib/logger";
 const API_BASE = `http://localhost:${process.env["PORT"] || 8080}`;
 const API_URL = `${API_BASE}/api/notes`;
 
+// --- Integración mínima de IA ---
+async function askAI(question: string): Promise<string> {
+  const baseUrl = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+  const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  if (!baseUrl || !apiKey) {
+    return "La IA no está configurada todavía.";
+  }
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-5",
+      max_completion_tokens: 512,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Eres el asistente de Memozapia, un app de notas tipo 'segundo cerebro'. " +
+            "Responde en español, de forma breve y útil.",
+        },
+        { role: "user", content: question },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    logger.error({ err }, "Error llamando a la IA");
+    return "❌ Error al consultar la IA.";
+  }
+  const data = (await res.json()) as {
+    choices: Array<{ message: { content: string } }>;
+  };
+  return data.choices[0]?.message?.content?.trim() ?? "Sin respuesta.";
+}
+// --------------------------------
+
 async function fetchJson(url: string, options?: RequestInit) {
   const res = await fetch(url, options);
   if (!res.ok) {
@@ -37,6 +76,7 @@ export function createTelegramBot() {
         "/notes — Ver notas recientes\n" +
         "/search \\[texto\\] — Buscar notas\n" +
         "/tags — Ver todas las etiquetas\n" +
+        "/ai \\[pregunta\\] — Preguntar a la IA\n" +
         "/reminder \\[texto\\] — Guardar un recordatorio\n" +
         "/task \\[texto\\] — Guardar una tarea\n" +
         "/summary — Resumen de tus notas\n" +
@@ -52,6 +92,7 @@ export function createTelegramBot() {
         "/notes — Lista las 10 notas más recientes\n" +
         "/search \\[texto\\] — Busca en título y contenido\n" +
         "/tags — Muestra todas las etiquetas existentes\n" +
+        "/ai \\[pregunta\\] — Pregunta cualquier cosa a la IA\n" +
         "/reminder \\[texto\\] — Guarda un recordatorio como nota\n" +
         "/task \\[texto\\] — Guarda una tarea pendiente como nota\n" +
         "/summary — Resumen de tus notas y etiquetas\n\n" +
@@ -152,6 +193,22 @@ export function createTelegramBot() {
     } catch (err) {
       logger.error(err, "Error /summary");
       return ctx.reply("❌ Error al generar el resumen.");
+    }
+  });
+
+  // /ai
+  bot.command("ai", async (ctx) => {
+    const question = ctx.message.text.substring(4).trim();
+    if (!question) {
+      return ctx.reply("Uso: /ai [tu pregunta]\n\nEjemplo: /ai ¿cómo organizo mis notas?");
+    }
+    await ctx.reply("🤖 Pensando...");
+    try {
+      const answer = await askAI(question);
+      return ctx.reply(`🧠 ${answer}`);
+    } catch (err) {
+      logger.error(err, "Error /ai");
+      return ctx.reply("❌ Error al consultar la IA.");
     }
   });
 
