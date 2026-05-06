@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { notesTable } from "@workspace/db";
-import { eq, ilike, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   CreateNoteBody,
   UpdateNoteBody,
@@ -10,6 +10,7 @@ import {
   UpdateNoteParams,
   DeleteNoteParams,
 } from "@workspace/api-zod";
+import { ZodError } from "zod";
 
 const router = Router();
 
@@ -45,6 +46,9 @@ router.get("/", async (req, res) => {
       })),
     );
   } catch (err) {
+    if (err instanceof ZodError) {
+      return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
+    }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -83,6 +87,9 @@ router.get("/:id", async (req, res) => {
       updated_at: note.updated_at.toISOString(),
     });
   } catch (err) {
+    if (err instanceof ZodError) {
+      return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
+    }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -109,6 +116,9 @@ router.post("/", async (req, res) => {
       updated_at: note.updated_at.toISOString(),
     });
   } catch (err) {
+    if (err instanceof ZodError) {
+      return res.status(400).json({ error: "Invalid request body", details: err.issues });
+    }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -136,6 +146,9 @@ router.put("/:id", async (req, res) => {
       updated_at: note.updated_at.toISOString(),
     });
   } catch (err) {
+    if (err instanceof ZodError) {
+      return res.status(400).json({ error: "Invalid request body", details: err.issues });
+    }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -152,6 +165,9 @@ router.delete("/:id", async (req, res) => {
     if (!deleted) return res.status(404).json({ error: "Nota no encontrada" });
     res.json({ message: "Nota eliminada correctamente" });
   } catch (err) {
+    if (err instanceof ZodError) {
+      return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
+    }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
