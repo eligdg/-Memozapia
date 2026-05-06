@@ -1,10 +1,11 @@
-# [Project name]
+# Memozapia
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A "Second Brain" note-taking app with AI-ready foundations — users can create, search, filter by tag, and manage notes with a beautiful glassmorphism UI.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/memozapia run dev` — run the frontend (port 20588)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -14,7 +15,8 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- Frontend: React + Vite (artifact: `artifacts/memozapia/`, preview path: `/`)
+- API: Express 5 (artifact: `artifacts/api-server/`, preview path: `/api`)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
@@ -22,23 +24,36 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — OpenAPI source of truth
+- `lib/db/src/schema/notes.ts` — Notes table (Drizzle schema)
+- `artifacts/api-server/src/routes/notes.ts` — Notes CRUD + tags endpoints
+- `artifacts/memozapia/src/App.tsx` — Main React app with all components inline
+- `artifacts/memozapia/src/memozapia.css` — Custom glassmorphism CSS (separate from Tailwind)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Notes app ported from CRA (create-react-app) + Express to Vite + React + PostgreSQL (Drizzle)
+- The original JSON file-based database was replaced with PostgreSQL for persistence
+- All frontend components are in `App.tsx` (single file) to match the original simple structure
+- CSS uses a custom `mz-` prefix namespace to avoid conflicts with existing Tailwind/shadcn classes
+- Tags are stored as a `text[]` array column in PostgreSQL (no separate tags table)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Create, edit, and delete notes with title, content, and tags
+- Search notes by keyword (debounced 300ms)
+- Filter notes by tag
+- Glassmorphism UI design with indigo/purple theme
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- App is in Spanish (UI labels, alerts, etc.)
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After changing `lib/api-spec/openapi.yaml`, always run codegen before using updated types
+- `lib/api-zod/src/index.ts` must only export from `./generated/api` (not types) to avoid name conflicts
+- Do not run `pnpm dev` at the workspace root — use workflow or `--filter` flag
 
 ## Pointers
 

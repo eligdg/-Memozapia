@@ -1,2 +1,8 @@
 export * from "./generated/api";
-export * from "./generated/types";
+export type {
+  Note,
+  Tag,
+  ListNotesParams,
+  HealthStatus,
+  DeleteNote200,
+} from "./generated/types";

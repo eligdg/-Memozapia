@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Memozapia"
+version = "1.0.0"
+id = "artifacts/memozapia"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20588
+
+[services.development]
+run = "pnpm --filter @workspace/memozapia run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/memozapia", "run", "build" ]
+publicDir = "artifacts/memozapia/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20588"
+BASE_PATH = "/"
