@@ -4,8 +4,18 @@ import { logger } from "./lib/logger";
 const API_BASE = `http://localhost:${process.env["PORT"] || 8080}`;
 const API_URL = `${API_BASE}/api/notes`;
 
-// --- Integración mínima de IA ---
-async function askAI(question: string): Promise<string> {
+// --- Historial de conversaciones en memoria (por userId) ---
+type Mensaje = { role: "user" | "assistant"; content: string };
+const conversaciones = new Map<number, Mensaje[]>();
+
+const SYSTEM_PROMPT =
+  "Eres el asistente de Memozapia, una app de notas tipo 'segundo cerebro'. " +
+  "Ayuda al usuario a organizar sus ideas, crear notas y tareas, y pensar con claridad. " +
+  "Responde siempre en español, de forma breve y útil. " +
+  "Si el usuario quiere guardar algo, díselo claramente.";
+
+// Llama a la IA con el historial completo
+async function chatAI(historial: Mensaje[]): Promise<string> {
   const baseUrl = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
   const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
   if (!baseUrl || !apiKey) {
@@ -20,15 +30,7 @@ async function askAI(question: string): Promise<string> {
     body: JSON.stringify({
       model: "gpt-5-mini",
       max_completion_tokens: 1024,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Eres el asistente de Memozapia, un app de notas tipo 'segundo cerebro'. " +
-            "Responde en español, de forma breve y útil.",
-        },
-        { role: "user", content: question },
-      ],
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...historial],
     }),
   });
   if (!res.ok) {
@@ -41,7 +43,7 @@ async function askAI(question: string): Promise<string> {
   };
   return data.choices[0]?.message?.content?.trim() ?? "Sin respuesta.";
 }
-// --------------------------------
+// -----------------------------------------------------------
 
 async function fetchJson(url: string, options?: RequestInit) {
   const res = await fetch(url, options);
@@ -76,12 +78,13 @@ export function createTelegramBot() {
         "/notes — Ver notas recientes\n" +
         "/search \\[texto\\] — Buscar notas\n" +
         "/tags — Ver todas las etiquetas\n" +
-        "/ai \\[pregunta\\] — Preguntar a la IA\n" +
+        "/ai \\[pregunta\\] — Chatear con la IA\n" +
+        "/salir — Terminar conversación con IA\n" +
         "/reminder \\[texto\\] — Guardar un recordatorio\n" +
         "/task \\[texto\\] — Guardar una tarea\n" +
         "/summary — Resumen de tus notas\n" +
         "/help — Ver ayuda\n\n" +
-        "_Cualquier mensaje de texto se guarda automáticamente como nota._"
+        "_Cualquier mensaje fuera del chat IA se guarda como nota._"
     );
   });
 
@@ -92,11 +95,13 @@ export function createTelegramBot() {
         "/notes — Lista las 10 notas más recientes\n" +
         "/search \\[texto\\] — Busca en título y contenido\n" +
         "/tags — Muestra todas las etiquetas existentes\n" +
-        "/ai \\[pregunta\\] — Pregunta cualquier cosa a la IA\n" +
+        "/ai \\[pregunta\\] — Inicia o continúa un chat con la IA\n" +
+        "/salir — Sale del modo IA (vuelve a guardar notas)\n" +
         "/reminder \\[texto\\] — Guarda un recordatorio como nota\n" +
         "/task \\[texto\\] — Guarda una tarea pendiente como nota\n" +
         "/summary — Resumen de tus notas y etiquetas\n\n" +
-        "_Cualquier mensaje de texto se guarda como nota._"
+        "_Mientras estés en modo IA, tus mensajes van a la IA._\n" +
+        "_Escribe /salir para volver a guardar notas._"
     );
   });
 
@@ -196,20 +201,45 @@ export function createTelegramBot() {
     }
   });
 
-  // /ai
+  // /ai — inicia o continúa conversación con IA
   bot.command("ai", async (ctx) => {
+    const userId = ctx.from.id;
     const question = ctx.message.text.substring(4).trim();
     if (!question) {
-      return ctx.reply("Uso: /ai [tu pregunta]\n\nEjemplo: /ai ¿cómo organizo mis notas?");
+      const enModo = conversaciones.has(userId);
+      return ctx.reply(
+        enModo
+          ? "Ya estás en modo IA — escribe directamente tu mensaje.\nUsa /salir para terminar."
+          : "Uso: /ai [tu pregunta]\n\nEjemplo: /ai ¿cómo organizo mis notas?"
+      );
     }
+
+    // Añadir la pregunta al historial (o iniciar uno nuevo)
+    const historial = conversaciones.get(userId) ?? [];
+    historial.push({ role: "user", content: question });
+
     await ctx.reply("🤖 Pensando...");
     try {
-      const answer = await askAI(question);
-      return ctx.reply(`🧠 ${answer}`);
+      const respuesta = await chatAI(historial);
+      historial.push({ role: "assistant", content: respuesta });
+      conversaciones.set(userId, historial);
+      return ctx.reply(`🧠 ${respuesta}\n\n_Puedes seguir escribiendo. /salir para terminar._`);
     } catch (err) {
       logger.error(err, "Error /ai");
+      historial.pop(); // quitar la pregunta si falló
+      conversaciones.set(userId, historial);
       return ctx.reply("❌ Error al consultar la IA.");
     }
+  });
+
+  // /salir — termina el modo IA y limpia el historial
+  bot.command("salir", (ctx) => {
+    const userId = ctx.from.id;
+    if (conversaciones.has(userId)) {
+      conversaciones.delete(userId);
+      return ctx.reply("✅ Conversación con IA terminada.\nTus mensajes se guardarán como notas de nuevo.");
+    }
+    return ctx.reply("No estás en modo IA. Escribe /ai [pregunta] para empezar.");
   });
 
   // /reminder
@@ -266,11 +296,35 @@ export function createTelegramBot() {
     }
   });
 
-  // Mensajes de texto libres → guardar como nota
+  // Mensajes de texto libres:
+  // - Si hay conversación IA activa → continuar con la IA
+  // - Si no → guardar como nota
   bot.on("text", async (ctx) => {
     if (ctx.message.text.startsWith("/")) return;
+
+    const userId = ctx.from.id;
+    const content = ctx.message.text;
+
+    // Modo IA activo
+    if (conversaciones.has(userId)) {
+      const historial = conversaciones.get(userId)!;
+      historial.push({ role: "user", content });
+      await ctx.reply("🤖 Pensando...");
+      try {
+        const respuesta = await chatAI(historial);
+        historial.push({ role: "assistant", content: respuesta });
+        conversaciones.set(userId, historial);
+        return ctx.reply(`🧠 ${respuesta}\n\n_Sigue escribiendo o usa /salir para terminar._`);
+      } catch (err) {
+        logger.error(err, "Error en chat IA");
+        historial.pop();
+        conversaciones.set(userId, historial);
+        return ctx.reply("❌ Error al consultar la IA.");
+      }
+    }
+
+    // Modo nota (comportamiento original)
     try {
-      const content = ctx.message.text;
       await fetchJson(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

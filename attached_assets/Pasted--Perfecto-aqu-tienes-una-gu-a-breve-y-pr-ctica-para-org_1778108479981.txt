@@ -1,0 +1,35 @@
+🧠 Perfecto — aquí tienes una guía breve y práctica para organizar tus notas como un segundo cerebro:
+
+Pasos rápidos (empieza hoy)
+- Crea una "Bandeja" o "Inbox" para capturar todo sin pensar.  
+- Haz una limpieza semanal: procesa la bandeja y decide conservar, convertir en tarea, o borrar.  
+- Usa una nota diaria (Daily Note) para capturas rápidas y enlaces.  
+- Crea una nota índice principal (Mapa de contenido / MOC) con enlaces a tus áreas clave.
+
+Principios y sistema
+- PARÁ (PARA): organiza en Projects (proyectos activos), Areas (áreas de responsabilidad), Resources (recursos) y Archive (archivo). Simple y práctico.  
+- Zettelkasten para conocimiento: toma notas atómicas (una idea por nota), enlázalas y convierte las mejores en notas permanentes (evergreen).  
+- Mantén las capturas frictionless: que tomar una nota sea instantáneo (app móvil + shortcut).
+
+Estructura y convenciones
+- Nombra notas con claridad: para ideas/recursos usa "YYYY-MM-DD Título corto" o "Título — tema".  
+- Usa etiquetas para estados y tipos: #idea #evergreen #tarea #referencia.  
+- Ten carpetas mínimas: Inbox, Projects, Areas, Resources, Archive. Evita muchas subcarpetas.
+
+Vinculación y recuperación
+- Enlaza notas entre sí (enlaces bidireccionales) para crear contexto.  
+- Crea MOCs (mapas de contenido) por tema para navegar rápidamente.  
+- Usa resúmenes al inicio de notas largas (para leer rápido).
+
+Mantenimiento
+- Revisión semanal: procesa inbox, actualiza proyectos y tareas.  
+- Revisión trimestral: limpia recursos obsoletos y archiva lo que ya no usas.  
+- Convierte notas útiles en acciones o plantillas reutilizables.
+
+Consejos prácticos
+- Divide: captura → procesar → enlazar → revisar.  
+- Mantén las notas lo más atómicas posible.  
+- Prioriza búsqueda rápida: buena nomenclatura + etiquetas + MOCs.  
+- Automatiza (plantillas, shortcuts, integraciones con calendario/tareas) para reducir trabajo manual.
+
+Si quieres, te doy un esquema PARA adaptado a tu vida/proyectos y una plantilla de nota diaria en 3 líneas. ¿Lo quieres?
