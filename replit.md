@@ -37,6 +37,8 @@ A "Second Brain" note-taking app with AI-ready foundations — users can create,
 - All frontend components are in `App.tsx` (single file) to match the original simple structure
 - CSS uses a custom `mz-` prefix namespace to avoid conflicts with existing Tailwind/shadcn classes
 - Tags are stored as a `text[]` array column in PostgreSQL (no separate tags table)
+- Google Calendar and Gmail use `@replit/connectors-sdk` proxy pattern (OAuth handled by Replit)
+- `gcal_event_id` stored on notes to avoid duplicate GCal events across sync runs
 
 ## Product
 

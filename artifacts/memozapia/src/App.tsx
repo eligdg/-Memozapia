@@ -153,6 +153,35 @@ function NoteEditor({
     setScheduledAt(note.scheduled_at ? note.scheduled_at.slice(0, 16) : "");
   }, [(note as Note).id]);
 
+  const [showEmail, setShowEmail] = useState(false);
+  const [emailTo, setEmailTo] = useState("eligomez83@gmail.com");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [emailMsg, setEmailMsg] = useState("");
+
+  const handleSendEmail = async () => {
+    setEmailStatus("sending");
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const resp = await fetch(`${base}/api/gmail/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: emailTo,
+          subject: title.trim() || "Nota de Memozapia",
+          body: content,
+        }),
+      });
+      const data = await resp.json() as { success?: boolean; error?: string };
+      if (!resp.ok || data.error) throw new Error(data.error ?? "Error desconocido");
+      setEmailStatus("ok");
+      setEmailMsg("Enviado correctamente");
+      setTimeout(() => { setEmailStatus("idle"); setShowEmail(false); }, 2500);
+    } catch (e: unknown) {
+      setEmailStatus("error");
+      setEmailMsg(e instanceof Error ? e.message : "Error al enviar");
+    }
+  };
+
   const handleSave = () => {
     if (!content.trim()) { alert("El contenido es requerido"); return; }
     onSave({
@@ -210,8 +239,35 @@ function NoteEditor({
         </div>
       </div>
 
+      {/* Email panel */}
+      {showEmail && (
+        <div className="mz-email-panel">
+          <div className="mz-email-row">
+            <label className="mz-email-label">Para:</label>
+            <input
+              type="email"
+              className="mz-email-input"
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+              placeholder="destinatario@email.com"
+            />
+          </div>
+          <div className="mz-email-actions">
+            <button className="mz-cancel-btn" onClick={() => { setShowEmail(false); setEmailStatus("idle"); setEmailMsg(""); }}>Cancelar</button>
+            <button
+              className="mz-email-send-btn"
+              onClick={handleSendEmail}
+              disabled={emailStatus === "sending"}
+            >
+              {emailStatus === "sending" ? "⏳ Enviando..." : emailStatus === "ok" ? `✅ ${emailMsg}` : emailStatus === "error" ? `❌ ${emailMsg}` : "📧 Enviar"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mz-editor-actions">
         <button className="mz-cancel-btn" onClick={onCancel}>Cancelar</button>
+        <button className="mz-email-btn" onClick={() => { setShowEmail(!showEmail); setEmailStatus("idle"); setEmailMsg(""); }}>📧 Email</button>
         <button className="mz-save-btn" onClick={handleSave}>{(note as Note).id ? "Actualizar" : "Guardar"}</button>
       </div>
     </div>
