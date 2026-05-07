@@ -160,9 +160,11 @@ async function ejecutarMarcador(marcador: Marcador, chatId: number): Promise<str
 
 // ── Llama a la IA con el historial completo ──────────────────────────────────
 async function chatAI(historial: Mensaje[]): Promise<string> {
-  const baseUrl = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
-  const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
-  if (!baseUrl || !apiKey) {
+  const apiKey = process.env["OPENAI_API_KEY"] || process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  const baseUrl = process.env["OPENAI_API_KEY"]
+    ? "https://api.openai.com/v1"
+    : (process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"] ?? "");
+  if (!apiKey) {
     return "La IA no está configurada todavía.";
   }
   const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -172,8 +174,8 @@ async function chatAI(historial: Mensaje[]): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 1024,
+      model: "gpt-4o",
+      max_tokens: 1024,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...historial],
     }),
   });
