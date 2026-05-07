@@ -1,15 +1,7 @@
-/**
- * Gmail send route — uses @replit/connectors-sdk (google-mail connector)
- * POST /api/gmail/send  — sends an email with the note's content
- */
 import { Router } from "express";
-import { ReplitConnectors } from "@replit/connectors-sdk";
+import { googleFetch, GMAIL_BASE } from "../lib/google-auth";
 
 const router = Router();
-
-function getConnectors() {
-  return new ReplitConnectors();
-}
 
 interface SendEmailBody {
   to: string;
@@ -21,12 +13,10 @@ interface SendEmailBody {
 router.post("/send", async (req, res) => {
   try {
     const { to, subject, body } = req.body as SendEmailBody;
-
     if (!to || !subject || !body) {
       return res.status(400).json({ error: "Se requieren: to, subject y body" });
     }
 
-    // Build RFC 2822 message
     const messageParts = [
       `To: ${to}`,
       `Subject: ${subject}`,
@@ -41,10 +31,8 @@ router.post("/send", async (req, res) => {
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
-    const connectors = getConnectors();
-    const resp = await connectors.proxy(
-      "google-mail",
-      "/gmail/v1/users/me/messages/send",
+    const resp = await googleFetch(
+      `${GMAIL_BASE}/users/me/messages/send`,
       {
         method: "POST",
         body: JSON.stringify({ raw }),
@@ -52,11 +40,13 @@ router.post("/send", async (req, res) => {
       }
     );
 
-    const data = await resp.json() as { id?: string; error?: { message: string } };
+    const data = (await resp.json()) as {
+      id?: string;
+      error?: { message: string };
+    };
     if (data.error) {
       return res.status(500).json({ error: data.error.message });
     }
-
     return res.json({ success: true, messageId: data.id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Error al enviar email";

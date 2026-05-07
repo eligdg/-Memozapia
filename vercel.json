@@ -1,0 +1,23 @@
+{
+  "buildCommand": "pnpm --filter @workspace/memozapia run build",
+  "outputDirectory": "artifacts/memozapia/dist/public",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://memozapia-api.onrender.com/api/:path*"
+    },
+    {
+      "source": "/_/backend/:path*",
+      "destination": "https://memozapia-api.onrender.com/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "BASE_PATH": "/"
+  }
+}

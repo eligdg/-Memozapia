@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: memozapia-api
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install -g pnpm@latest && pnpm install && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push
+    startCommand: node artifacts/api-server/dist/index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://memozapia.vercel.app/_/backend/google-callback
+      - key: FRONTEND_URL
+        value: https://memozapia.vercel.app
+      - key: NODE_ENV
+        value: production
