@@ -14,6 +14,12 @@ import { ZodError } from "zod";
 
 const router = Router();
 
+function dbErr(err: unknown, req: import("express").Request, res: import("express").Response) {
+  req.log.error(err);
+  const detail = err instanceof Error ? err.message : String(err);
+  return res.status(500).json({ error: "Internal server error", detail });
+}
+
 // GET /api/notes - list notes with optional search and tag filter
 router.get("/", async (req, res) => {
   try {
@@ -51,8 +57,7 @@ router.get("/", async (req, res) => {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
     }
-    req.log.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return dbErr(err, req, res);
   }
 });
 
@@ -69,8 +74,7 @@ router.get("/tags/all", async (req, res) => {
       .map((name, index) => ({ id: index + 1, name }));
     return res.json(tags);
   } catch (err) {
-    req.log.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return dbErr(err, req, res);
   }
 });
 
@@ -93,8 +97,7 @@ router.get("/:id", async (req, res) => {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
     }
-    req.log.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return dbErr(err, req, res);
   }
 });
 
@@ -124,8 +127,7 @@ router.post("/", async (req, res) => {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: "Invalid request body", details: err.issues });
     }
-    req.log.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return dbErr(err, req, res);
   }
 });
 
@@ -156,8 +158,7 @@ router.put("/:id", async (req, res) => {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: "Invalid request body", details: err.issues });
     }
-    req.log.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return dbErr(err, req, res);
   }
 });
 
@@ -175,8 +176,7 @@ router.delete("/:id", async (req, res) => {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: "Invalid request parameters", details: err.issues });
     }
-    req.log.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return dbErr(err, req, res);
   }
 });
 
