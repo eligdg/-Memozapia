@@ -1,0 +1,42 @@
+==> Downloading cache...
+==> Cloning from https://github.com/eligdg/-Memozapia
+==> Checking out commit 2671b8de0b324d4494be26786889c949557a8707 in branch main
+==> Downloaded 180MB in 6s. Extraction took 5s.
+==> Requesting Node.js version 22
+==> Using Node.js version 22.22.2 via /opt/render/project/src/.node-version
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install -g pnpm@10 && pnpm install --ignore-scripts && pnpm --filter @workspace/api-server run build'...
+changed 1 package in 1s
+1 package is looking for funding
+  run `npm fund` for details
+> @workspace/api-server@0.0.0 build /opt/render/project/src/artifacts/api-server
+> node ./build.mjs
+  dist/index.mjs                       2.8mb ⚠️
+  dist/pino-worker.mjs               153.4kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   4.9mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.0kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+⚡ Done in 518ms
+==> Uploading build...
+==> Uploaded in 5.8s. Compression took 6.0s
+==> Build successful 🎉
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Running 'node artifacts/api-server/dist/index.mjs'
+(node:68) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{"level":30,"time":1778176224496,"pid":68,"hostname":"srv-d7ub1btckfvc73er5t4g-hibernate-64c996bf4d-4nlpr","port":10000,"msg":"Server listening"}
+{"level":40,"time":1778176224497,"pid":68,"hostname":"srv-d7ub1btckfvc73er5t4g-hibernate-64c996bf4d-4nlpr","msg":"TELEGRAM_TOKEN no configurado — bot de Telegram desactivado"}
+{"level":30,"time":1778176225148,"pid":68,"hostname":"srv-d7ub1btckfvc73er5t4g-hibernate-64c996bf4d-4nlpr","req":{"id":1,"method":"HEAD","url":"/"},"res":{"statusCode":404},"responseTime":5,"msg":"request completed"}
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://memozapia-gtzq.onrender.com
+==> 
+==> ///////////////////////////////////////////////////////////

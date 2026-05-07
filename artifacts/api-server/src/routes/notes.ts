@@ -16,8 +16,10 @@ const router = Router();
 
 function dbErr(err: unknown, req: import("express").Request, res: import("express").Response) {
   req.log.error(err);
-  const detail = err instanceof Error ? err.message : String(err);
-  return res.status(500).json({ error: "Internal server error", detail });
+  const e = err instanceof Error ? err : new Error(String(err));
+  const cause = (e as Error & { cause?: unknown }).cause;
+  const causeMsg = cause instanceof Error ? cause.message : cause ? String(cause) : undefined;
+  return res.status(500).json({ error: "Internal server error", detail: e.message, cause: causeMsg });
 }
 
 // GET /api/notes - list notes with optional search and tag filter

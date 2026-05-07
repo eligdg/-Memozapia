@@ -10,19 +10,11 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const connectionString = process.env.DATABASE_URL;
-
-// Neon and other hosted Postgres providers require SSL in production.
-// If the connection string already contains sslmode=require the pg driver
-// handles it automatically; we also set ssl:true as an explicit fallback.
-const needsSsl =
-  connectionString.includes("neon.tech") ||
-  connectionString.includes("sslmode=require") ||
-  process.env.NODE_ENV === "production";
-
+// Always use SSL — required for Neon and most hosted Postgres providers.
+// rejectUnauthorized: false accepts self-signed certs (safe for Neon).
 export const pool = new Pool({
-  connectionString,
-  ssl: needsSsl ? { rejectUnauthorized: false } : false,
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool, { schema });
