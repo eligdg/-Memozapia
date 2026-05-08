@@ -32,6 +32,43 @@ ACCIONES ESPECIALES — úsalas cuando el usuario lo pida explícitamente:
 
 Tras el marcador, confirma la acción de forma amigable en tu respuesta normal.`;
 
+// ── Detección y configuración de la IA ──────────────────────────────────────
+function getAIConfig(): { apiKey: string; baseUrl: string; model: string } | null {
+  // Soporte para OpenAI, Anthropic (via compatibilidad OpenAI), u otros proveedores compatibles
+  const openaiKey = process.env["OPENAI_API_KEY"];
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"];
+  const customKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  const customBaseUrl = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+  const customModel = process.env["AI_MODEL"];
+
+  if (openaiKey) {
+    return {
+      apiKey: openaiKey,
+      baseUrl: "https://api.openai.com/v1",
+      model: customModel ?? "gpt-4o-mini",
+    };
+  }
+
+  if (anthropicKey) {
+    // Anthropic tiene su propia API — usamos su endpoint de messages
+    return {
+      apiKey: anthropicKey,
+      baseUrl: "anthropic",
+      model: customModel ?? "claude-3-haiku-20240307",
+    };
+  }
+
+  if (customKey && customBaseUrl) {
+    return {
+      apiKey: customKey,
+      baseUrl: customBaseUrl.replace(/\/$/, ""),
+      model: customModel ?? "gpt-4o-mini",
+    };
+  }
+
+  return null;
+}
+
 // ── Parseo de fecha en lenguaje natural (para comandos directos) ─────────────
 function parsearFecha(texto: string): Date | null {
   const ahora = new Date();
@@ -160,13 +197,31 @@ async function ejecutarMarcador(marcador: Marcador, chatId: number): Promise<str
 
 // ── Llama a la IA con el historial completo ──────────────────────────────────
 async function chatAI(historial: Mensaje[]): Promise<string> {
-  const apiKey = process.env["OPENAI_API_KEY"] || process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
-  const baseUrl = process.env["OPENAI_API_KEY"]
-    ? "https://api.openai.com/v1"
-    : (process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"] ?? "");
-  if (!apiKey) {
-    return "La IA no está configurada todavía.";
+  const config = getAIConfig();
+  if (!config) {
+    return (
+      "❌ La IA no está configurada. Configura una de estas variables de entorno:\n" +
+      "• OPENAI_API_KEY (para OpenAI)\n" +
+      "• ANTHROPIC_API_KEY (para Claude)\n" +
+      "• AI_INTEGRATIONS_OPENAI_API_KEY + AI_INTEGRATIONS_OPENAI_BASE_URL (proveedor personalizado)"
+    );
   }
+
+  // Anthropic API nativa
+  if (config.baseUrl === "anthropic") {
+    return chatAIAnthropic(historial, config.apiKey, config.model);
+  }
+
+  // API compatible con OpenAI
+  return chatAIOpenAI(historial, config.apiKey, config.baseUrl, config.model);
+}
+
+async function chatAIOpenAI(
+  historial: Mensaje[],
+  apiKey: string,
+  baseUrl: string,
+  model: string
+): Promise<string> {
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -174,20 +229,59 @@ async function chatAI(historial: Mensaje[]): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model,
       max_tokens: 1024,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...historial],
     }),
   });
+
   if (!res.ok) {
     const err = await res.text();
-    logger.error({ err }, "Error llamando a la IA");
-    return "❌ Error al consultar la IA.";
+    logger.error({ err, status: res.status }, "Error llamando a la IA (OpenAI)");
+    if (res.status === 401) return "❌ API key de IA inválida o expirada.";
+    if (res.status === 429) return "❌ Límite de uso de la IA alcanzado. Intenta más tarde.";
+    return `❌ Error al consultar la IA (${res.status}).`;
   }
+
   const data = (await res.json()) as {
     choices: Array<{ message: { content: string } }>;
   };
   return data.choices[0]?.message?.content?.trim() ?? "Sin respuesta.";
+}
+
+async function chatAIAnthropic(
+  historial: Mensaje[],
+  apiKey: string,
+  model: string
+): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages: historial,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    logger.error({ err, status: res.status }, "Error llamando a la IA (Anthropic)");
+    if (res.status === 401) return "❌ API key de Anthropic inválida o expirada.";
+    if (res.status === 429) return "❌ Límite de uso de la IA alcanzado. Intenta más tarde.";
+    return `❌ Error al consultar la IA (${res.status}).`;
+  }
+
+  const data = (await res.json()) as {
+    content: Array<{ type: string; text: string }>;
+  };
+  const textBlock = data.content?.find((b) => b.type === "text");
+  return textBlock?.text?.trim() ?? "Sin respuesta.";
 }
 
 // ── Crea nota o recordatorio con fecha desde texto plano ─────────────────────
@@ -278,6 +372,17 @@ function iniciarCheckerRecordatorios(bot: Telegraf) {
   }, 60_000);
 }
 
+// ── Estado del bot (para el endpoint de status) ───────────────────────────────
+let botUsername: string | null = null;
+
+export function getBotStatus(): { active: boolean; username: string | null; aiConfigured: boolean } {
+  return {
+    active: botUsername !== null,
+    username: botUsername,
+    aiConfigured: getAIConfig() !== null,
+  };
+}
+
 // ── Bot principal ─────────────────────────────────────────────────────────────
 export function createTelegramBot() {
   const token = process.env["TELEGRAM_TOKEN"];
@@ -286,9 +391,21 @@ export function createTelegramBot() {
     return null;
   }
 
+  const aiConfig = getAIConfig();
+  if (!aiConfig) {
+    logger.warn(
+      "No se ha configurado ninguna clave de IA (OPENAI_API_KEY, ANTHROPIC_API_KEY o " +
+      "AI_INTEGRATIONS_OPENAI_API_KEY+AI_INTEGRATIONS_OPENAI_BASE_URL). " +
+      "Las funciones de IA del bot estarán desactivadas."
+    );
+  } else {
+    logger.info({ model: aiConfig.model, provider: aiConfig.baseUrl === "anthropic" ? "Anthropic" : "OpenAI-compatible" }, "IA configurada para el bot");
+  }
+
   const bot = new Telegraf(token);
 
   bot.telegram.getMe().then((me) => {
+    botUsername = me.username ?? null;
     logger.info(`Bot de Telegram activo: @${me.username}`);
     iniciarCheckerRecordatorios(bot);
   }).catch(() => {
@@ -297,9 +414,13 @@ export function createTelegramBot() {
 
   // /start
   bot.start((ctx) => {
-    ctx.replyWithMarkdown(
+    const aiStatus = getAIConfig()
+      ? "_✅ IA configurada y lista_"
+      : "_⚠️ IA no configurada \\(sin API key\\)_";
+    ctx.replyWithMarkdownV2(
       "*🧠 Memozapia Bot*\n\n" +
       "Tu segundo cerebro personal\\.\n\n" +
+      `${aiStatus}\n\n` +
       "*Comandos disponibles:*\n" +
       "/notes — Ver notas recientes\n" +
       "/search \\[texto\\] — Buscar notas\n" +
@@ -312,13 +433,13 @@ export function createTelegramBot() {
       "/task \\[texto\\] — Guardar una tarea\n" +
       "/summary — Resumen de tus notas\n" +
       "/help — Ver ayuda\n\n" +
-      "_💡 Durante el chat con IA puedes decir_ *\"guarda esto como nota\"* _o_ *\"recuérdame a las 9...\"* _y lo hará automáticamente\\._"
+      "_💡 Durante el chat con IA puedes decir_ *\"guarda esto como nota\"* _o_ *\"recuérdame a las 9\\.\\.\\."* _y lo hará automáticamente\\._"
     );
   });
 
   // /help
   bot.help((ctx) => {
-    ctx.replyWithMarkdown(
+    ctx.replyWithMarkdownV2(
       "*Ayuda — Memozapia Bot*\n\n" +
       "*Notas:*\n" +
       "/notes — Lista las 10 notas más recientes\n" +
@@ -353,13 +474,14 @@ export function createTelegramBot() {
       recent.forEach((note, i) => {
         const title = note.title || "Sin título";
         const preview = note.content.substring(0, 60).replace(/\n/g, " ");
-        const tags = note.tags?.length ? " _\\[" + note.tags.filter(t => !t.startsWith("_tg_")).join(", ") + "\\]_" : "";
+        const visibleTags = note.tags?.filter(t => !t.startsWith("_tg_") && t !== "recordatorio-activo" && t !== "recordatorio-enviado");
+        const tags = visibleTags?.length ? " _\\[" + visibleTags.map(escapeMarkdownV2).join(", ") + "\\]_" : "";
         msg += `${i + 1}\\. *${escapeMarkdownV2(title)}*${tags}\n   ${escapeMarkdownV2(preview)}…\n\n`;
       });
       return ctx.replyWithMarkdownV2(msg);
     } catch (err) {
       logger.error(err, "Error /notes");
-      return ctx.reply("❌ Error al obtener las notas.");
+      return ctx.reply("❌ Error al obtener las notas. ¿Está el servidor en marcha?");
     }
   });
 
@@ -391,8 +513,8 @@ export function createTelegramBot() {
       const tags = (await fetchJson(`${API_URL}/tags/all`)) as Array<{ id: number; name: string }>;
       const visibles = tags.filter(t => !t.name.startsWith("_tg_") && t.name !== "recordatorio-activo" && t.name !== "recordatorio-enviado");
       if (visibles.length === 0) return ctx.reply("No tienes etiquetas todavía.");
-      const tagList = visibles.map((t) => `#${t.name}`).join("  ");
-      return ctx.replyWithMarkdown(`*Tus etiquetas:*\n\n${tagList}`);
+      const tagList = visibles.map((t) => `\\#${escapeMarkdownV2(t.name)}`).join("  ");
+      return ctx.replyWithMarkdownV2(`*Tus etiquetas:*\n\n${tagList}`);
     } catch (err) {
       logger.error(err, "Error /tags");
       return ctx.reply("❌ Error al obtener las etiquetas.");
@@ -404,15 +526,17 @@ export function createTelegramBot() {
     try {
       const notes = (await fetchJson(API_URL)) as Array<{ title: string | null; content: string; tags: string[] }>;
       if (notes.length === 0) return ctx.reply("No tienes notas para resumir.");
-      const allTags = [...new Set(notes.flatMap((n) => n.tags || []).filter(t => !t.startsWith("_tg_")))];
-      const tagsStr = allTags.length ? allTags.map((t) => `#${t}`).join(", ") : "ninguna";
+      const allTags = [...new Set(notes.flatMap((n) => n.tags || []).filter(t =>
+        !t.startsWith("_tg_") && t !== "recordatorio-activo" && t !== "recordatorio-enviado"
+      ))];
+      const tagsStr = allTags.length ? allTags.map((t) => `\\#${escapeMarkdownV2(t)}`).join(", ") : "ninguna";
       const pendRecords = notes.filter(n => n.tags.includes("recordatorio-activo")).length;
-      return ctx.replyWithMarkdown(
+      return ctx.replyWithMarkdownV2(
         `*📝 Resumen de tus notas:*\n\n` +
         `• Total de notas: *${notes.length}*\n` +
         `• Etiquetas usadas: ${tagsStr}\n` +
         (pendRecords > 0 ? `• ⏰ Recordatorios pendientes: *${pendRecords}*\n` : "") +
-        `\n_Usa /notes para ver las más recientes o /search para buscar._`
+        `\n_Usa /notes para ver las más recientes o /search para buscar\\._`
       );
     } catch (err) {
       logger.error(err, "Error /summary");
@@ -425,6 +549,17 @@ export function createTelegramBot() {
     const userId = ctx.from.id;
     const chatId = ctx.chat.id;
     const question = ctx.message.text.substring(4).trim();
+
+    if (!getAIConfig()) {
+      return ctx.reply(
+        "❌ La IA no está configurada.\n\n" +
+        "Configura una de estas variables de entorno en el servidor:\n" +
+        "• OPENAI_API_KEY\n" +
+        "• ANTHROPIC_API_KEY\n" +
+        "• AI_INTEGRATIONS_OPENAI_API_KEY + AI_INTEGRATIONS_OPENAI_BASE_URL"
+      );
+    }
+
     if (!question) {
       const enModo = conversaciones.has(userId);
       return ctx.reply(
@@ -437,7 +572,7 @@ export function createTelegramBot() {
     const historial = conversaciones.get(userId) ?? [];
     historial.push({ role: "user", content: question });
 
-    await ctx.reply("🤖 Pensando...");
+    const thinkingMsg = await ctx.reply("🤖 Pensando...");
     try {
       const respuestaRaw = await chatAI(historial);
       const { marcadores, limpio } = extraerMarcadores(respuestaRaw);
@@ -454,8 +589,12 @@ export function createTelegramBot() {
           if (conf) confirmaciones.push(conf);
         } catch (e) {
           logger.error(e, "Error ejecutando marcador IA");
+          confirmaciones.push("⚠️ No se pudo guardar la nota/recordatorio.");
         }
       }
+
+      // Borra el "Pensando..." y envía la respuesta real
+      await ctx.telegram.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
 
       let reply = `🧠 ${limpio}\n\n_Sigue escribiendo o usa /salir para terminar._`;
       if (confirmaciones.length > 0) {
@@ -466,7 +605,8 @@ export function createTelegramBot() {
       logger.error(err, "Error /ai");
       historial.pop();
       conversaciones.set(userId, historial);
-      return ctx.reply("❌ Error al consultar la IA.");
+      await ctx.telegram.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
+      return ctx.reply("❌ Error al consultar la IA. Inténtalo de nuevo.");
     }
   });
 
@@ -583,9 +723,13 @@ export function createTelegramBot() {
 
     // Modo IA activo → continuar conversación
     if (conversaciones.has(userId)) {
+      if (!getAIConfig()) {
+        return ctx.reply("❌ La IA no está configurada. Usa /salir para volver al modo notas.");
+      }
+
       const historial = conversaciones.get(userId)!;
       historial.push({ role: "user", content });
-      await ctx.reply("🤖 Pensando...");
+      const thinkingMsg = await ctx.reply("🤖 Pensando...");
       try {
         const respuestaRaw = await chatAI(historial);
         const { marcadores, limpio } = extraerMarcadores(respuestaRaw);
@@ -601,8 +745,11 @@ export function createTelegramBot() {
             if (conf) confirmaciones.push(conf);
           } catch (e) {
             logger.error(e, "Error ejecutando marcador IA");
+            confirmaciones.push("⚠️ No se pudo guardar la nota/recordatorio.");
           }
         }
+
+        await ctx.telegram.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
 
         let reply = `🧠 ${limpio}\n\n_Sigue escribiendo o /salir para terminar._`;
         if (confirmaciones.length > 0) {
@@ -613,11 +760,12 @@ export function createTelegramBot() {
         logger.error(err, "Error en chat IA");
         historial.pop();
         conversaciones.set(userId, historial);
-        return ctx.reply("❌ Error al consultar la IA.");
+        await ctx.telegram.deleteMessage(chatId, thinkingMsg.message_id).catch(() => {});
+        return ctx.reply("❌ Error al consultar la IA. Inténtalo de nuevo.");
       }
     }
 
-    // Modo nota (comportamiento original)
+    // Modo nota (comportamiento por defecto)
     try {
       await fetchJson(API_URL, {
         method: "POST",
@@ -628,7 +776,7 @@ export function createTelegramBot() {
       return ctx.reply(`✅ Nota guardada:\n"${preview}${content.length > 80 ? "…" : ""}"`);
     } catch (err) {
       logger.error(err, "Error guardando nota desde Telegram");
-      return ctx.reply("❌ Error al guardar la nota.");
+      return ctx.reply("❌ Error al guardar la nota. ¿Está el servidor conectado a la base de datos?");
     }
   });
 
@@ -640,12 +788,12 @@ export function createTelegramBot() {
   return bot;
 }
 
-// Escapa caracteres especiales para Markdown v1
+// Escapa caracteres especiales para Markdown v1 (usado con replyWithMarkdown)
 function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
 }
 
-// Escapa caracteres especiales para MarkdownV2
+// Escapa caracteres especiales para MarkdownV2 (usado con replyWithMarkdownV2)
 function escapeMarkdownV2(text: string): string {
   return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
 }

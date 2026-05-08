@@ -5,6 +5,20 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import NotFound from "@/pages/not-found";
 import "./memozapia.css";
 
+type BotStatus = { active: boolean; username: string | null; aiConfigured: boolean };
+
+function useBotStatus() {
+  const [status, setStatus] = useState<BotStatus | null>(null);
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    fetch(`${base}/api/bot/status`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: BotStatus | null) => { if (d) setStatus(d); })
+      .catch(() => {});
+  }, []);
+  return status;
+}
+
 const queryClient = new QueryClient();
 
 type Note = {
@@ -445,9 +459,40 @@ function CalendarView({
   );
 }
 
+// ─── BotStatusBadge ───────────────────────────────────────────────────────────
+function BotStatusBadge({ status }: { status: BotStatus | null }) {
+  if (!status) return null;
+  if (!status.active) {
+    return (
+      <a
+        href="https://t.me/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mz-bot-badge mz-bot-badge--off"
+        title="Bot de Telegram no configurado"
+      >
+        🤖 Bot desactivado
+      </a>
+    );
+  }
+  return (
+    <a
+      href={`https://t.me/${status.username}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`mz-bot-badge ${status.aiConfigured ? "mz-bot-badge--on" : "mz-bot-badge--warn"}`}
+      title={status.aiConfigured ? "Bot activo con IA" : "Bot activo, IA no configurada"}
+    >
+      🤖 @{status.username}
+      {!status.aiConfigured && <span className="mz-bot-badge-warn"> ⚠️</span>}
+    </a>
+  );
+}
+
 // ─── MemozapiaApp ─────────────────────────────────────────────────────────────
 function MemozapiaApp() {
   const queryClient = useQueryClient();
+  const botStatus = useBotStatus();
   const [selectedNote, setSelectedNote] = useState<Note | { title: string; content: string; tags: string[]; scheduled_at?: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -542,6 +587,8 @@ function MemozapiaApp() {
             <button className={`mz-view-tab ${activeView === "notas" ? "active" : ""}`} onClick={() => changeView("notas")}>📝 Notas</button>
             <button className={`mz-view-tab ${activeView === "agenda" ? "active" : ""}`} onClick={() => changeView("agenda")}>📅 Agenda</button>
           </nav>
+
+          <BotStatusBadge status={botStatus} />
         </div>
       </header>
 
